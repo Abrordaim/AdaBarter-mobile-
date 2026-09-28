@@ -1,14 +1,43 @@
 import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
+import Constants from 'expo-constants';
 
-// Default API Base URL based on environment
-// For Android Emulator: 10.0.2.2 points to host machine
-// For iOS Simulator / Web: localhost points to host machine
+// =====================================================================
+// Konfigurasi API Base URL — Sesuaikan IP_ADDRESS di bawah ini
+// dengan IP LAN komputer Anda (jalankan `hostname -I` di terminal).
+// Server Laravel HARUS dijalankan dengan:
+//   php artisan serve --host=0.0.0.0 --port=8000
+// =====================================================================
+
+// Ganti IP ini dengan IP jaringan lokal komputer Anda
+const LOCAL_IP = '192.168.0.106';
+
 const getBaseUrl = () => {
-  if (Platform.OS === 'android') {
-    return 'http://10.0.2.2:8000/api';
+  // 1. Expo extra configuration jika ada
+  const envUrl = Constants.expoConfig?.extra?.apiBaseUrl;
+  if (envUrl) return envUrl;
+
+  // 2. Web browser
+  if (Platform.OS === 'web') {
+    return 'http://localhost:8000/api';
   }
-  return 'http://localhost:8000/api';
+
+  // 3. Otomatis deteksi IP Host komputer dari Expo Metro Packager
+  // Pada Expo Go (HP fisik maupun emulator), hostUri berisi alamat host komputer: "192.168.x.x:8081"
+  const hostUri =
+    Constants.expoConfig?.hostUri ||
+    (Constants as any).manifest?.debuggerHost ||
+    (Constants as any).manifest2?.extra?.expoGo?.debuggerHost;
+
+  if (hostUri) {
+    const host = hostUri.split(':')[0];
+    if (host && host !== 'localhost' && host !== '127.0.0.1') {
+      return `http://${host}:8000/api`;
+    }
+  }
+
+  // 4. Fallback ke IP LAN komputer lokal
+  return `http://${LOCAL_IP}:8000/api`;
 };
 
 export const API_BASE_URL = getBaseUrl();
@@ -88,7 +117,13 @@ export async function apiClient<T = any>(
       headers,
     });
 
-    const data = await response.json();
+    let data: any = {};
+    const text = await response.text();
+    try {
+      data = text ? JSON.parse(text) : {};
+    } catch {
+      data = { message: text || `HTTP ${response.status}` };
+    }
 
     if (!response.ok) {
       const errorMessage = data?.message || `Request failed with status ${response.status}`;
@@ -100,6 +135,7 @@ export async function apiClient<T = any>(
 
     return data;
   } catch (error: any) {
+    console.error(`[AdaBarter API Error] ${options.method || 'GET'} ${url}:`, error.message);
     throw error;
   }
 }

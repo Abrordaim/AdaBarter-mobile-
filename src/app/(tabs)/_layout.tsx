@@ -24,7 +24,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: 'Home',
-          tabBarIcon: ({ color, size }) => <Icon name="house" size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => <Icon name="home" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
@@ -41,7 +41,7 @@ export default function TabLayout() {
           tabBarIcon: ({ focused }) => (
             <View className="items-center justify-center -mt-6">
               <View className="bg-brand-600 w-14 h-14 rounded-full items-center justify-center border-4 border-white dark:border-slate-900 shadow-sm">
-                <Icon name="plus-circle" size={30} color="#ffffff" />
+                <Icon name="add" size={30} color="#ffffff" />
               </View>
             </View>
           ),
@@ -51,7 +51,7 @@ export default function TabLayout() {
         name="chat"
         options={{
           title: 'Chat',
-          tabBarIcon: ({ color, size }) => <Icon name="message" size={size} color={color} />,
+          tabBarIcon: ({ color, size }) => <Icon name="chatbox" size={size} color={color} />,
         }}
       />
       <Tabs.Screen
