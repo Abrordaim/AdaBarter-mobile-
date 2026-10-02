@@ -139,3 +139,54 @@ export async function apiClient<T = any>(
     throw error;
   }
 }
+
+/**
+ * Upload multipart/form-data via XMLHttpRequest.
+ * React Native's XHR natively understands {uri, name, type} FormData entries
+ * without needing to convert to Blob first — works on both physical devices
+ * (content:// URIs) and emulators.
+ */
+export function uploadWithXHR<T = any>(
+  endpoint: string,
+  formData: FormData,
+  token: string | null
+): Promise<ApiResponse<T>> {
+  const url = `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', url, true);
+    xhr.setRequestHeader('Accept', 'application/json');
+    if (token) {
+      xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+    }
+
+    xhr.onload = () => {
+      let data: any = {};
+      try {
+        data = xhr.responseText ? JSON.parse(xhr.responseText) : {};
+      } catch {
+        data = { message: xhr.responseText || `HTTP ${xhr.status}` };
+      }
+
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve(data as ApiResponse<T>);
+      } else {
+        const errorMessage = data?.message || `Request failed with status ${xhr.status}`;
+        const error: any = new Error(errorMessage);
+        error.status = xhr.status;
+        error.errors = data?.errors;
+        console.error(`[AdaBarter API Error] POST ${url}:`, errorMessage);
+        reject(error);
+      }
+    };
+
+    xhr.onerror = () => {
+      const error = new Error('Network request failed');
+      console.error(`[AdaBarter API Error] POST ${url}: Network request failed`);
+      reject(error);
+    };
+
+    xhr.send(formData);
+  });
+}

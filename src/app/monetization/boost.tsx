@@ -165,7 +165,7 @@ export default function BoostItemScreen() {
                   onPress={() => setSelectedItemId(item.id)}
                   className={`w-40 mr-3 p-3 rounded-2xl border ${
                     isSelected
-                      ? 'bg-amber-50/80 dark:bg-amber-950/40 border-amber-500 shadow-sm'
+                      ? 'bg-amber-50 dark:bg-amber-950 border-amber-500'
                       : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'
                   }`}
                 >
@@ -212,7 +212,7 @@ export default function BoostItemScreen() {
                 onPress={() => setSelectedDays(pkg.days)}
                 className={`p-4 rounded-2xl border flex-row items-center justify-between ${
                   isSelected
-                    ? 'bg-amber-50/80 dark:bg-amber-950/40 border-amber-500 shadow-sm'
+                    ? 'bg-amber-50 dark:bg-amber-950 border-amber-500'
                     : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'
                 }`}
               >

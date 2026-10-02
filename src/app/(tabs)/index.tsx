@@ -249,8 +249,8 @@ export default function HomeScreen() {
         <View className="flex-1 bg-black/50 justify-center items-center px-6">
           <View className="bg-white dark:bg-slate-800 w-full p-6 rounded-3xl shadow-lg">
             <View className="items-center mb-4">
-              <View className="w-12 h-12 bg-emerald-100 dark:bg-emerald-950 rounded-full items-center justify-center mb-2">
-                <AppText className="text-2xl">📍</AppText>
+              <View className="w-12 h-12  dark:bg-emerald-950 rounded-full items-center justify-center mb-2">
+                <AppText className="text-2xl"><Icon name={'location'} size={24} color={'green'}/></AppText>
               </View>
               <AppText variant="h3" className="font-bold text-center text-slate-900 dark:text-white">
                 Filter Wilayah Lokal (COD)

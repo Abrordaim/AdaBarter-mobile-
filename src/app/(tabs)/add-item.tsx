@@ -29,6 +29,7 @@ export default function AddItemScreen() {
   const [city, setCity] = useState(user?.city || '');
   const [location, setLocation] = useState('');
   const [images, setImages] = useState<string[]>([]);
+  const [imageAssets, setImageAssets] = useState<ImagePicker.ImagePickerAsset[]>([]);
 
   const [loading, setLoading] = useState(false);
   const [fetchingCategories, setFetchingCategories] = useState(false);
@@ -72,7 +73,7 @@ export default function AddItemScreen() {
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        mediaTypes: 'images' as any,
         allowsMultipleSelection: true,
         quality: 0.8,
         selectionLimit: 5 - images.length,
@@ -81,6 +82,8 @@ export default function AddItemScreen() {
       if (!result.canceled && result.assets && result.assets.length > 0) {
         const newUris = result.assets.map((asset) => asset.uri);
         setImages((prev) => [...prev, ...newUris].slice(0, 5));
+        // Store full asset info for upload
+        setImageAssets((prev) => [...prev, ...result.assets].slice(0, 5));
       }
     } catch (e: any) {
       console.log('Error picking images:', e);
@@ -90,6 +93,7 @@ export default function AddItemScreen() {
 
   const removeImage = (indexToRemove: number) => {
     setImages((prev) => prev.filter((_, idx) => idx !== indexToRemove));
+    setImageAssets((prev) => prev.filter((_, idx) => idx !== indexToRemove));
   };
 
   const handleSubmit = async () => {
@@ -108,7 +112,7 @@ export default function AddItemScreen() {
       return;
     }
 
-    if (images.length === 0) {
+    if (imageAssets.length === 0) {
       Alert.alert('Foto Barang Wajib', 'Unggah minimal 1 foto barang yang ingin Anda barter.');
       return;
     }
@@ -126,7 +130,7 @@ export default function AddItemScreen() {
           city: city.trim() || undefined,
           location: location.trim() || undefined,
         },
-        images
+        imageAssets
       );
 
       await refreshUser();
@@ -145,6 +149,7 @@ export default function AddItemScreen() {
               setEstimatedPrice('');
               setLocation('');
               setImages([]);
+              setImageAssets([]);
               router.replace('/(tabs)');
             },
           },
@@ -195,8 +200,8 @@ export default function AddItemScreen() {
         {/* Quota Notice Banner */}
         <View className={`p-4 rounded-xl border mb-5 ${
           !canPost && !isVip
-            ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-300 dark:border-amber-800'
-            : 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800'
+            ? 'bg-amber-50 dark:bg-amber-950 border-amber-300 dark:border-amber-800'
+            : 'bg-emerald-50 dark:bg-emerald-950 border-emerald-200 dark:border-emerald-800'
         }`}>
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center gap-2">
@@ -287,7 +292,7 @@ export default function AddItemScreen() {
                   onPress={() => setSelectedCategory(cat.id)}
                   className={`px-4 py-2 rounded-xl flex-row items-center gap-1.5 border ${
                     isSelected
-                      ? 'bg-brand-600 border-brand-600 shadow-sm'
+                      ? 'bg-brand-600 border-brand-600'
                       : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'
                   }`}
                 >
@@ -319,7 +324,7 @@ export default function AddItemScreen() {
                   onPress={() => setCondition(cond.id)}
                   className={`p-3 rounded-xl border flex-row items-center justify-between ${
                     isSelected
-                      ? 'bg-brand-50/70 dark:bg-brand-950/30 border-brand-600'
+                      ? 'bg-brand-50 dark:bg-brand-950 border-brand-600'
                       : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'
                   }`}
                 >

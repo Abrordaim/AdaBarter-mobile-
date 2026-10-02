@@ -1,5 +1,6 @@
-import { apiClient } from './api';
+import { apiClient, uploadWithXHR, TokenStorage } from './api';
 import { User } from './authService';
+import * as ImagePicker from 'expo-image-picker';
 
 export interface UserProfileData extends User {
   active_items_count: number;
@@ -22,27 +23,28 @@ export const userService = {
     return res.data;
   },
 
-  async updateProfile(data: UpdateProfileData, avatarUri?: string): Promise<User> {
-    if (avatarUri) {
+  async updateProfile(
+    data: UpdateProfileData,
+    avatarAsset?: ImagePicker.ImagePickerAsset | null
+  ): Promise<User> {
+    if (avatarAsset) {
       const formData = new FormData();
-      if (data.name) formData.append('name', data.name);
-      if (data.phone) formData.append('phone', data.phone);
-      if (data.city) formData.append('city', data.city);
+      if (data.name !== undefined) formData.append('name', data.name);
+      if (data.phone !== undefined) formData.append('phone', data.phone || '');
+      if (data.city !== undefined) formData.append('city', data.city || '');
 
-      const filename = avatarUri.split('/').pop() || 'avatar.jpg';
-      const match = /\.(\w+)$/.exec(filename);
-      const type = match ? `image/${match[1]}` : 'image/jpeg';
+      const mimeType = avatarAsset.mimeType || 'image/jpeg';
+      const ext = mimeType.split('/')[1] || 'jpg';
+      const filename = avatarAsset.fileName || `avatar_${Date.now()}.${ext}`;
 
       formData.append('avatar', {
-        uri: avatarUri,
+        uri: avatarAsset.uri,
         name: filename,
-        type,
+        type: mimeType,
       } as any);
 
-      const res = await apiClient<User>('/user/profile', {
-        method: 'POST',
-        body: formData,
-      });
+      const token = await TokenStorage.getToken();
+      const res = await uploadWithXHR<User>('/user/profile', formData, token);
       return res.data;
     }
 

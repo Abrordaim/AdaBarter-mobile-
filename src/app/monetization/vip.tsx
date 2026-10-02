@@ -189,7 +189,7 @@ export default function VipSubscriptionScreen() {
                 onPress={() => setSelectedPlanId(plan.id)}
                 className={`p-4 rounded-2xl border ${
                   isSelected
-                    ? 'bg-emerald-50/80 dark:bg-emerald-950/40 border-brand-600 shadow-sm'
+                    ? 'bg-emerald-50 dark:bg-emerald-950 border-brand-600'
                     : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'
                 }`}
               >

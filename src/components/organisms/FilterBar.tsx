@@ -46,7 +46,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
           onPress={() => onSelectCategory(null)}
           className={`px-4 py-2 rounded-full mr-2 flex-row items-center border ${
             selectedCategoryId === null
-              ? 'bg-brand-600 border-brand-600 shadow-sm'
+              ? 'bg-brand-600 border-brand-600'
               : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'
           }`}
         >
@@ -67,7 +67,7 @@ export const FilterBar: React.FC<FilterBarProps> = ({
               onPress={() => onSelectCategory(isSelected ? null : cat.id)}
               className={`px-3.5 py-2 rounded-full mr-2 flex-row items-center gap-1 border ${
                 isSelected
-                  ? 'bg-brand-600 border-brand-600 shadow-sm'
+                  ? 'bg-brand-600 border-brand-600'
                   : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'
               }`}
             >

@@ -1,6 +1,7 @@
-import { apiClient } from './api';
+import { apiClient, uploadWithXHR, TokenStorage } from './api';
 import { Category } from './categoryService';
 import { User } from './authService';
+import * as ImagePicker from 'expo-image-picker';
 
 export interface BarterItem {
   id: number;
@@ -73,7 +74,7 @@ export const itemService = {
     return res.data;
   },
 
-  async createItem(data: CreateItemData, imageUris: string[] = []): Promise<BarterItem> {
+  async createItem(data: CreateItemData, imageAssets: ImagePicker.ImagePickerAsset[] = []): Promise<BarterItem> {
     const formData = new FormData();
     formData.append('category_id', data.category_id.toString());
     formData.append('title', data.title);
@@ -84,22 +85,61 @@ export const itemService = {
     if (data.location) formData.append('location', data.location);
     if (data.city) formData.append('city', data.city);
 
-    imageUris.forEach((uri, index) => {
-      const filename = uri.split('/').pop() || `image_${index}.jpg`;
-      const match = /\.(\w+)$/.exec(filename);
-      const type = match ? `image/${match[1]}` : 'image/jpeg';
+    // Append images as native RN FormData parts {uri, name, type}.
+    // This bypasses Expo's Winter fetch and uses XMLHttpRequest which
+    // natively understands content:// URIs on physical Android devices.
+    for (let index = 0; index < imageAssets.length; index++) {
+      const asset = imageAssets[index];
+      const mimeType = asset.mimeType || 'image/jpeg';
+      const ext = mimeType.split('/')[1] || 'jpg';
+      const filename = asset.fileName || `image_${index}.${ext}`;
 
       formData.append('images[]', {
-        uri,
+        uri: asset.uri,
         name: filename,
-        type,
+        type: mimeType,
       } as any);
-    });
+    }
 
-    const res = await apiClient<BarterItem>('/items', {
-      method: 'POST',
-      body: formData,
-    });
+    // Use XHR to bypass Expo's Winter fetch (which can't handle content:// URIs)
+    const token = await TokenStorage.getToken();
+    const res = await uploadWithXHR<BarterItem>('/items', formData, token);
+    return res.data;
+  },
+
+  async updateItem(
+    id: number,
+    data: Partial<CreateItemData & { status?: string }>,
+    newImageAssets: ImagePicker.ImagePickerAsset[] = []
+  ): Promise<BarterItem> {
+    const formData = new FormData();
+    // Laravel method spoofing for PUT via multipart/form-data
+    formData.append('_method', 'PUT');
+
+    if (data.category_id !== undefined) formData.append('category_id', data.category_id.toString());
+    if (data.title !== undefined) formData.append('title', data.title);
+    if (data.description !== undefined) formData.append('description', data.description);
+    if (data.condition !== undefined) formData.append('condition', data.condition);
+    if (data.desired_items !== undefined) formData.append('desired_items', data.desired_items ?? '');
+    if (data.estimated_price !== undefined) formData.append('estimated_price', data.estimated_price.toString());
+    if (data.location !== undefined) formData.append('location', data.location ?? '');
+    if (data.city !== undefined) formData.append('city', data.city ?? '');
+    if (data.status !== undefined) formData.append('status', data.status);
+
+    for (let index = 0; index < newImageAssets.length; index++) {
+      const asset = newImageAssets[index];
+      const mimeType = asset.mimeType || 'image/jpeg';
+      const ext = mimeType.split('/')[1] || 'jpg';
+      const filename = asset.fileName || `new_image_${index}.${ext}`;
+      formData.append('new_images[]', {
+        uri: asset.uri,
+        name: filename,
+        type: mimeType,
+      } as any);
+    }
+
+    const token = await TokenStorage.getToken();
+    const res = await uploadWithXHR<BarterItem>(`/items/${id}`, formData, token);
     return res.data;
   },
 

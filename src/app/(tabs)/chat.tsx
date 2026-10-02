@@ -74,8 +74,8 @@ export default function ChatTabScreen() {
           </View>
         ) : conversations.length === 0 ? (
           <View className="py-20 px-6 items-center justify-center">
-            <View className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full items-center justify-center mb-4">
-              <AppText className="text-4xl"></AppText>
+            <View className="w-20 h-20 dark:bg-slate-800 rounded-full items-center justify-center mb-4">
+              <AppText className="text-4xl"><Icon name={'chatbox-outline'} size={24} color={'green'}/></AppText>
             </View>
             <AppText variant="h3" className="font-bold text-slate-800 dark:text-white text-center mb-1">
               Belum Ada Chat Negosiasi Aktif

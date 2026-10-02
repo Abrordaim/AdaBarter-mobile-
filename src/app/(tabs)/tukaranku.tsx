@@ -209,7 +209,7 @@ export default function TukarankuScreen() {
               setSelectedStatus(null);
             }}
             className={`flex-1 py-2.5 rounded-lg items-center ${
-              activeTab === 'received' ? 'bg-white dark:bg-slate-700 shadow-sm' : ''
+              activeTab === 'received' ? 'bg-white dark:bg-slate-700' : ''
             }`}
           >
             <AppText
@@ -227,7 +227,7 @@ export default function TukarankuScreen() {
               setSelectedStatus(null);
             }}
             className={`flex-1 py-2.5 rounded-lg items-center ${
-              activeTab === 'sent' ? 'bg-white dark:bg-slate-700 shadow-sm' : ''
+              activeTab === 'sent' ? 'bg-white dark:bg-slate-700' : ''
             }`}
           >
             <AppText
