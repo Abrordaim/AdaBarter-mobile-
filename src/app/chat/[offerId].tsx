@@ -146,8 +146,12 @@ export default function ChatRoomScreen() {
               </AppText>
               {otherUser?.is_vip && <Badge variant="warning" text="VIP" />}
             </View>
-            <AppText variant="caption" className="text-emerald-700 dark:text-emerald-300 text-[11px]" numberOfLines={1}>
-              🔄 {myItem?.title} ⇄ {theirItem?.title}
+            <AppText  className="flex-1 gap-8 dark:text-emerald-300" >
+               <AppText className='text-xs text-emerald-700 p-2 border'>{myItem?.title}</AppText>
+               <AppText> </AppText> 
+               <Icon name={'swap-horizontal'} size={10} color={'black'}/> 
+               <AppText> </AppText> 
+               <AppText className='text-xs text-emerald-700'>{theirItem?.title}</AppText>
             </AppText>
           </View>
         </View>
@@ -162,7 +166,7 @@ export default function ChatRoomScreen() {
             className="bg-emerald-600 px-3 py-1.5 rounded-full shadow-sm active:bg-emerald-700"
           >
             <AppText className="text-xs text-white font-bold">
-              {actionLoading ? 'Memproses...' : '🤝 Selesaikan COD'}
+              {actionLoading ? 'Memproses...' : 'Selesaikan COD'}
             </AppText>
           </TouchableOpacity>
         )}
@@ -171,14 +175,14 @@ export default function ChatRoomScreen() {
       {/* Item Context Banner */}
       <View className="bg-emerald-50 dark:bg-emerald-950/40 px-4 py-2 border-b border-emerald-200 dark:border-emerald-800 flex-row items-center justify-between">
         <View className="flex-row items-center gap-2 flex-1 pr-2">
-          <AppText className="text-sm">📍</AppText>
+          {/* <AppText className="text-sm"><Icon name={'location-outline'} size={12} /></AppText> */}
           <AppText className="text-xs text-emerald-900 dark:text-emerald-200" numberOfLines={1}>
             Lokasi COD disarankan di area publik yang aman (mall, minimarket, stasiun).
           </AppText>
         </View>
         {offer.cash_supplement && (
           <View className="bg-amber-100 dark:bg-amber-950 px-2 py-0.5 rounded-full">
-            <AppText className="text-[10px] text-amber-800 dark:text-amber-200 font-bold">
+            <AppText className="text-xs text-amber-800 dark:text-amber-200 font-bold">
               +Rp {Number(offer.cash_supplement).toLocaleString('id-ID')}
             </AppText>
           </View>
@@ -201,7 +205,7 @@ export default function ChatRoomScreen() {
               <View key={msg.id} className="my-3 items-center px-4">
                 <View className="bg-amber-50 dark:bg-amber-950/60 border border-amber-200 dark:border-amber-800/80 px-4 py-2.5 rounded-2xl max-w-[90%] shadow-sm">
                   <AppText className="text-xs text-center text-amber-900 dark:text-amber-200 leading-4 font-medium">
-                    📢 {msg.message}
+                    {msg.message}
                   </AppText>
                   {msg.created_at && (
                     <AppText className="text-[10px] text-center text-amber-600 dark:text-amber-400 mt-1">
@@ -244,7 +248,7 @@ export default function ChatRoomScreen() {
                 </AppText>
                 <View className="flex-row justify-end items-center gap-1 mt-1">
                   <AppText
-                    className={`text-[10px] ${
+                    className={`text-[8px] ${
                       isMe ? 'text-emerald-100' : 'text-slate-400'
                     }`}
                   >
@@ -256,7 +260,7 @@ export default function ChatRoomScreen() {
                       : ''}
                   </AppText>
                   {isMe && (
-                    <AppText className="text-[10px] text-emerald-100">
+                    <AppText className="text-[8px] text-emerald-100">
                       {msg.read_at ? '✓✓' : '✓'}
                     </AppText>
                   )}
@@ -274,8 +278,9 @@ export default function ChatRoomScreen() {
       >
         {isCompleted ? (
           <View className="bg-slate-200 dark:bg-slate-800 p-3 items-center border-t border-slate-300 dark:border-slate-700">
+            
             <AppText variant="caption" className="text-slate-600 dark:text-slate-400 font-medium">
-              ✅ Transaksi barter ini telah selesai dituntaskan.
+              Transaksi barter ini telah selesai dituntaskan.
             </AppText>
           </View>
         ) : (

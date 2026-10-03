@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator, Modal, TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MainTemplate } from '@/components/templates';
-import { AppText, Button, Badge, Avatar } from '@/components/atoms';
+import { AppText, Button, Badge, Avatar, Icon } from '@/components/atoms';
 import { useAuth } from '@/context/AuthContext';
 import { offerService, BarterOffer } from '@/services/offerService';
 
@@ -171,7 +171,7 @@ export default function TukarankuScreen() {
       <MainTemplate title="Tukaranku">
         <View className="px-6 py-16 items-center justify-center">
           <View className="w-20 h-20 bg-brand-100 dark:bg-brand-900/30 rounded-full items-center justify-center mb-6">
-            <AppText className="text-4xl">🔄</AppText>
+            <Icon name={'repeat'} size={26} color={'green'}/>
           </View>
           <AppText variant="h2" className="text-center font-bold mb-2 text-slate-800 dark:text-white">
             Kelola Transaksi Barter
@@ -274,7 +274,7 @@ export default function TukarankuScreen() {
           </View>
         ) : offers.length === 0 ? (
           <View className="py-20 items-center justify-center">
-            <AppText className="text-4xl mb-3">📭</AppText>
+            <Icon name={'people'} size={26} color={'green'} className='mb-3'/>
             <AppText variant="h3" className="font-bold text-slate-800 dark:text-white text-center mb-1">
               Tidak Ada Penawaran
             </AppText>

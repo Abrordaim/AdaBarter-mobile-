@@ -124,7 +124,7 @@ export default function ProfileScreen() {
     try {
       const result = await voucherService.claimVoucher(voucherCode.trim());
       Alert.alert(
-        'Klaim Berhasil! 🎉',
+        'Klaim Berhasil! ',
         `Selamat! Anda mendapatkan tambahan kuota +${result.voucher.quota_amount} postingan. Sisa kuota aktif Anda sekarang: ${result.remaining_quota}.`
       );
       setVoucherModalVisible(false);
@@ -235,7 +235,7 @@ export default function ProfileScreen() {
       <MainTemplate title="Akunku">
         <View className="px-6 py-12 items-center justify-center">
           <View className="w-24 h-24 bg-brand-100 dark:bg-brand-900/30 rounded-full items-center justify-center mb-6">
-            <Icon name="person" size={48} color="#059669" />
+            <Icon name="person" size={24} color="green"  className=''/>
           </View>
           <AppText variant="h2" className="text-center font-bold mb-2 text-slate-800 dark:text-white">
             Bergabung dengan AdaBarter
@@ -387,15 +387,15 @@ export default function ProfileScreen() {
             <View className="flex-row gap-1.5">
               <TouchableOpacity
                 onPress={() => setVoucherModalVisible(true)}
-                className="bg-emerald-600 px-2.5 py-1.5 rounded-full flex-row items-center gap-1 shadow-sm"
+                className="bg-emerald-600 px-2.5 py-1 rounded-full flex-row items-center gap-1 shadow-sm"
               >
-                <AppText className="text-[11px] text-white font-bold">Voucher</AppText>
+                <AppText className="text-[10px] text-white font-bold">Voucher</AppText>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => setQuotaModalVisible(true)}
-                className="bg-amber-500 px-2.5 py-1.5 rounded-full flex-row items-center gap-1 shadow-sm"
+                className="bg-amber-500 px-2.5 py-1 rounded-full flex-row items-center gap-1 shadow-sm"
               >
-                <AppText className="text-[11px] text-white font-bold">+ Beli Slot</AppText>
+                <AppText className="text-[10px] text-white font-bold">Beli Slot</AppText>
               </TouchableOpacity>
             </View>
           </View>
@@ -502,7 +502,8 @@ export default function ProfileScreen() {
                 </View>
               ) : myItems.length === 0 ? (
                 <View className="py-8 items-center px-4">
-                  <AppText className="text-3xl mb-2">📦</AppText>
+                  {/* <AppText className="text-3xl mb-2">📦</AppText> */}
+
                   <AppText variant="body" className="font-semibold text-slate-700 dark:text-slate-300 text-center">
                     Belum Ada Barang
                   </AppText>
@@ -761,7 +762,6 @@ export default function ProfileScreen() {
           <View className="bg-white dark:bg-slate-800 w-full p-6 rounded-3xl shadow-lg">
             <View className="items-center mb-4">
               <View className="w-16 h-16 bg-amber-100 dark:bg-amber-950 rounded-full items-center justify-center mb-2">
-                <AppText className="text-3xl">📦</AppText>
               </View>
               <AppText variant="h3" className="font-bold text-center text-slate-900 dark:text-white">
                 Beli Slot Kuota Tambahan

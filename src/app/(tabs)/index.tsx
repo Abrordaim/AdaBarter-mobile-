@@ -102,7 +102,6 @@ export default function HomeScreen() {
           <View className="flex-row items-center justify-between mb-3">
             <View>
               <View className="flex-row items-center gap-1.5">
-                {/* <AppText className="text-xl">🔄</AppText> */}
                 <AppText variant="h2" className="text-white font-extrabold tracking-tight">
                   AdaBarter
                 </AppText>
@@ -120,11 +119,10 @@ export default function HomeScreen() {
               }}
               className="bg-emerald-700/80 border border-emerald-500/60 px-3 py-1.5 rounded-full flex-row items-center gap-1"
             >
-              {/* <AppText className="text-xs">📍</AppText> */}
               <AppText className="text-xs text-white font-bold" numberOfLines={1}>
-                {selectedCity || user?.city || 'Semua Kota'}
+                {selectedCity ||'Semua Kota'}
               </AppText>
-              <AppText className="text-[10px] text-emerald-200">▾</AppText>
+              {/* <AppText className="text-[10px] text-emerald-200">▾</AppText> */}
             </TouchableOpacity>
           </View>
 

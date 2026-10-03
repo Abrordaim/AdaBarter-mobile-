@@ -43,7 +43,7 @@ export default function ChatTabScreen() {
       <MainTemplate title="Ruang Chat">
         <View className="px-6 py-16 items-center justify-center">
           <View className="w-20 h-20 bg-brand-100 dark:bg-brand-900/30 rounded-full items-center justify-center mb-6">
-            <AppText className="text-4xl">💬</AppText>
+            <Icon name={'chatbox'} size={26} color={'green'}/>
           </View>
           <AppText variant="h2" className="text-center font-bold mb-2 text-slate-800 dark:text-white">
             Ruang Chat Negosiasi
@@ -116,9 +116,7 @@ export default function ChatTabScreen() {
                       url={otherUser?.avatar_url || undefined}
                       size="md"
                     />
-                    <View className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-600 items-center justify-center border-2 border-white dark:border-slate-800">
-                      <AppText className="text-[10px] text-white">🤝</AppText>
-                    </View>
+                 
                   </View>
 
                   <View className="flex-1">
@@ -133,7 +131,7 @@ export default function ChatTabScreen() {
 
                     {/* Barter Item Context */}
                     <View className="bg-slate-100 dark:bg-slate-700/60 px-2 py-0.5 rounded-md self-start mb-1.5 flex-row items-center gap-1">
-                      <AppText className="text-[11px] text-slate-700 dark:text-slate-300 font-medium" numberOfLines={1}>
+                      <AppText className="text-[8px] text-slate-700 dark:text-slate-300 font-medium" numberOfLines={1}>
                         {myItem?.title || 'Barang'} ⇄ {theirItem?.title || 'Barang'}
                       </AppText>
                     </View>
