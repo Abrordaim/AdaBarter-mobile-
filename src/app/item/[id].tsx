@@ -212,7 +212,8 @@ export default function ItemDetailScreen() {
           onPress={() => router.back()}
           className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 items-center justify-center"
         >
-          <AppText className="text-xl font-bold">‹</AppText>
+          {/* <AppText className="text-xl font-bold">‹</AppText> */}
+          <Icon name={'arrow-back'} size={24}/>
         </TouchableOpacity>
 
         <AppText variant="label" className="font-bold text-slate-800 dark:text-white" numberOfLines={1}>
@@ -222,15 +223,16 @@ export default function ItemDetailScreen() {
         <View className="flex-row items-center gap-2">
           <TouchableOpacity
             onPress={handleShare}
-            className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 items-center justify-center"
+            className="w-10 h-10 rounded-full bg-green-50 dark:bg-slate-800 items-center justify-center"
           >
-            <AppText className="text-lg">📤</AppText>
+            {/* <AppText className="text-lg">📤</AppText> */}
+            <Icon name={'share-social'} size={18} color={'green'}/>
           </TouchableOpacity>
 
           {!isOwner && (
             <TouchableOpacity
               onPress={openReportModal}
-              className="w-10 h-10 rounded-full bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 items-center justify-center"
+              className="w-10 h-10 rounded-full bg-red-50   items-center justify-center"
             >
               <Icon name="flag-outline" size={18} color="#ef4444" />
             </TouchableOpacity>
@@ -262,7 +264,6 @@ export default function ItemDetailScreen() {
             </ScrollView>
           ) : (
             <View className="flex-1 items-center justify-center">
-              <AppText className="text-6xl mb-2">📦</AppText>
               <AppText className="text-slate-400">Tidak ada foto</AppText>
             </View>
           )}

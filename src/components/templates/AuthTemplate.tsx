@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { AppText } from '../atoms';
+import { AppText, Icon } from '../atoms';
+
 
 export interface AuthTemplateProps {
   children: React.ReactNode;
@@ -30,7 +31,8 @@ export const AuthTemplate: React.FC<AuthTemplateProps> = ({
             
             <View className="items-center mb-10">
               <View className="w-20 h-20 bg-brand-600 rounded-2xl items-center justify-center mb-4 shadow-sm">
-                <AppText className="text-white text-3xl font-bold">AB</AppText>
+                {/* <AppText className="text-white text-3xl font-bold">AB</AppText> */}
+                <Icon name={'basket-outline'} size={30} color={'white'}/>
               </View>
               {title && <AppText variant="h2" className="text-brand-900 dark:text-white text-center mb-2">{title}</AppText>}
               {subtitle && <AppText variant="body" className="text-slate-600 dark:text-slate-400 text-center">{subtitle}</AppText>}

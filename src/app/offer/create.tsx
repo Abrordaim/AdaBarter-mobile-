@@ -1,12 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator, TextInput } from 'react-native';
+import { View, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { AppText, Button, Badge } from '@/components/atoms';
+import { AppText, Button, Badge, Icon } from '@/components/atoms';
 import { useAuth } from '@/context/AuthContext';
 import { itemService, BarterItem } from '@/services/itemService';
 import { offerService } from '@/services/offerService';
 
+// ─── helpers ──────────────────────────────────────────────────
+function formatRp(value: number): string {
+  return `Rp ${value.toLocaleString('id-ID')}`;
+}
+
+// ─── component ────────────────────────────────────────────────
 export default function CreateOfferScreen() {
   const { target_item_id } = useLocalSearchParams<{ target_item_id: string }>();
   const router = useRouter();
@@ -16,10 +22,10 @@ export default function CreateOfferScreen() {
   const [myItems, setMyItems] = useState<BarterItem[]>([]);
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
 
-  // Cash Supplement (Tukar Tambah) states
-  const [includeCash, setIncludeCash] = useState(false);
-  const [cashAmount, setCashAmount] = useState('');
+  // ── tukar-tambah states (read-only automatic calculation) ──
   const [cashPayer, setCashPayer] = useState<'offerer' | 'target_owner'>('offerer');
+  const [autoCalcAvailable, setAutoCalcAvailable] = useState(false);
+  const [autoCalcDiff, setAutoCalcDiff] = useState(0);
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -55,40 +61,59 @@ export default function CreateOfferScreen() {
     }
   };
 
+  // ── Auto-calculate tukar tambah whenever item selection changes ──
+  useEffect(() => {
+    if (!targetItem) return;
+    const myPrice = myItems.find((it) => it.id === selectedItemId)?.estimated_price
+      ? Number(myItems.find((it) => it.id === selectedItemId)!.estimated_price)
+      : null;
+    const theirPrice = targetItem.estimated_price ? Number(targetItem.estimated_price) : null;
+
+    if (!myPrice || !theirPrice) {
+      setAutoCalcAvailable(false);
+      setCashPayer('offerer');
+      setAutoCalcDiff(0);
+      return;
+    }
+
+    setAutoCalcAvailable(true);
+    const diff = theirPrice - myPrice;
+
+    if (Math.abs(diff) === 0) {
+      setCashPayer('offerer');
+      setAutoCalcDiff(0);
+    } else if (diff > 0) {
+      // Target is more expensive → offerer pays the difference
+      setCashPayer('offerer');
+      setAutoCalcDiff(diff);
+    } else {
+      // My item is more expensive → target owner pays the difference
+      setCashPayer('target_owner');
+      setAutoCalcDiff(Math.abs(diff));
+    }
+  }, [selectedItemId, targetItem, myItems]);
+
   const handleSubmit = async () => {
     if (!targetItem || !selectedItemId) {
       Alert.alert('Perhatian', 'Pilih salah satu barang milik Anda untuk ditukarkan.');
       return;
     }
 
-    let parsedCash: number | undefined = undefined;
-    if (includeCash) {
-      const cleanCash = cashAmount.replace(/[^0-9]/g, '');
-      if (!cleanCash || parseInt(cleanCash, 10) <= 0) {
-        Alert.alert('Perhatian', 'Masukkan nominal uang tambahan yang valid.');
-        return;
-      }
-      parsedCash = parseInt(cleanCash, 10);
-    }
+    const hasCashSupplement = autoCalcAvailable && autoCalcDiff > 0;
 
     setSubmitting(true);
     try {
       await offerService.createOffer({
         offerer_item_id: selectedItemId,
         target_item_id: targetItem.id,
-        cash_supplement: parsedCash,
-        cash_supplement_by: includeCash ? cashPayer : undefined,
+        cash_supplement: hasCashSupplement ? autoCalcDiff : undefined,
+        cash_supplement_by: hasCashSupplement ? cashPayer : undefined,
       });
 
       Alert.alert(
-        'Tawaran Terkirim! 🎉',
+        'Tawaran Terkirim! ',
         'Tawaran barter berhasil dikirimkan kepada pemilik barang. Anda dapat memantau status persetujuan di tab Tukaranku.',
-        [
-          {
-            text: 'Buka Tukaranku',
-            onPress: () => router.replace('/(tabs)/tukaranku'),
-          },
-        ]
+        [{ text: 'Buka Tukaranku', onPress: () => router.replace('/(tabs)/tukaranku') }]
       );
     } catch (e: any) {
       const msg = e.errors?.target_item_id?.[0] || e.message || 'Gagal mengajukan barter.';
@@ -111,7 +136,10 @@ export default function CreateOfferScreen() {
 
   if (!targetItem) return null;
 
-  const selectedItem = myItems.find((it) => it.id === selectedItemId);
+  const selectedItem = myItems.find((it) => it.id === selectedItemId) ?? null;
+  const myPrice   = selectedItem?.estimated_price ? Number(selectedItem.estimated_price) : null;
+  const theirPrice = targetItem.estimated_price   ? Number(targetItem.estimated_price)   : null;
+  const maxPrice   = myPrice && theirPrice ? Math.max(myPrice, theirPrice) : 1;
 
   return (
     <SafeAreaView className="flex-1 bg-slate-50 dark:bg-slate-900" edges={['top']}>
@@ -159,7 +187,7 @@ export default function CreateOfferScreen() {
                   : 'Nilai Fleksibel'}
               </AppText>
               <AppText variant="caption" className="text-slate-500 mt-1">
-                Pemilik: {targetItem.user?.name || 'User'} (📍 {targetItem.city || 'Indonesia'})
+                Pemilik: {targetItem.user?.name || 'User'} ({targetItem.city || 'Indonesia'})
               </AppText>
             </View>
           </View>
@@ -167,15 +195,11 @@ export default function CreateOfferScreen() {
 
         {/* Step 2: Choose Your Item to Trade */}
         <View className="mb-5">
-          <View className="flex-row justify-between items-center mb-2">
+          <View className=" mb-2">
             <AppText variant="caption" className="text-slate-500 font-bold uppercase tracking-wider">
               2. Pilih Barang Anda untuk Ditukar *
             </AppText>
-            <TouchableOpacity onPress={() => router.push('/(tabs)/add-item')}>
-              <AppText variant="caption" className="text-brand-600 font-bold">
-                + Upload Barang Baru
-              </AppText>
-            </TouchableOpacity>
+            
           </View>
 
           {myItems.length === 0 ? (
@@ -233,139 +257,201 @@ export default function CreateOfferScreen() {
                     </View>
 
                     <View
-                      className={`w-6 h-6 rounded-full border-2 items-center justify-center ${
-                        isSelected ? 'border-brand-600 bg-brand-600' : 'border-slate-300'
-                      }`}
+                      style={{
+                        width: 22, height: 22, borderRadius: 11, borderWidth: 2,
+                        alignItems: 'center', justifyContent: 'center',
+                        borderColor: isSelected ? '#059669' : '#cbd5e1',
+                        backgroundColor: isSelected ? '#059669' : 'transparent',
+                      }}
                     >
-                      {isSelected && <View className="w-2.5 h-2.5 rounded-full bg-white" />}
+                      {isSelected && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#fff' }} />}
                     </View>
                   </TouchableOpacity>
                 );
               })}
             </View>
+            
           )}
-        </View>
-
-        {/* Step 3: Tukar Tambah (Cash Supplement) Feature */}
-        <View className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 mb-5">
-          <View className="flex-row items-center justify-between">
-            <View className="flex-1 pr-2">
-              <View className="flex-row items-center gap-1.5">
-                <AppText className="text-lg">💵</AppText>
-                <AppText variant="label" className="font-bold text-slate-900 dark:text-white">
-                  Opsi Tukar Tambah (Uang Tambahan)
-                </AppText>
-              </View>
-              <AppText variant="caption" className="text-slate-500 mt-0.5">
-                Sertakan uang tunai jika ada selisih nilai antara kedua barang.
+          <TouchableOpacity onPress={() => router.push('/(tabs)/add-item')}>
+              <AppText className=" bg-green-600 text-white w-32 text-sm font-bold px-2 py-1 mt-2 rounded-lg">
+                + Upload Barang
               </AppText>
-            </View>
-
-            <TouchableOpacity
-              onPress={() => setIncludeCash(!includeCash)}
-              className={`w-12 h-6 rounded-full p-0.5 transition-colors ${
-                includeCash ? 'bg-brand-600' : 'bg-slate-300 dark:bg-slate-600'
-              }`}
-            >
-              <View
-                className={`w-5 h-5 rounded-full bg-white shadow-sm transition-transform ${
-                  includeCash ? 'ml-6' : 'ml-0'
-                }`}
-              />
             </TouchableOpacity>
-          </View>
-
-          {includeCash && (
-            <View className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-700">
-              <AppText variant="caption" className="text-slate-700 dark:text-slate-300 font-semibold mb-1">
-                Nominal Uang Tambahan (Rp) *
-              </AppText>
-              <TextInput
-                placeholder="Contoh: 150000"
-                placeholderTextColor="#94a3b8"
-                keyboardType="numeric"
-                value={cashAmount}
-                onChangeText={setCashAmount}
-                className="bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl px-4 py-2.5 text-base font-bold text-slate-900 dark:text-white mb-3"
-              />
-
-              <AppText variant="caption" className="text-slate-700 dark:text-slate-300 font-semibold mb-2">
-                Siapa yang membayar uang tambahan?
-              </AppText>
-              <View className="gap-2">
-                <TouchableOpacity
-                  onPress={() => setCashPayer('offerer')}
-                  className={`p-3 rounded-xl border flex-row items-center justify-between ${
-                    cashPayer === 'offerer'
-                      ? 'bg-emerald-50 dark:bg-emerald-950/40 border-brand-600'
-                      : 'border-slate-200 dark:border-slate-700'
-                  }`}
-                >
-                  <AppText className="text-sm font-medium text-slate-800 dark:text-slate-200">
-                    🙋 Saya yang menambah uang ke pemilik
-                  </AppText>
-                  <View
-                    className={`w-4 h-4 rounded-full border ${
-                      cashPayer === 'offerer' ? 'border-brand-600 bg-brand-600' : 'border-slate-400'
-                    }`}
-                  />
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  onPress={() => setCashPayer('target_owner')}
-                  className={`p-3 rounded-xl border flex-row items-center justify-between ${
-                    cashPayer === 'target_owner'
-                      ? 'bg-emerald-50 dark:bg-emerald-950/40 border-brand-600'
-                      : 'border-slate-200 dark:border-slate-700'
-                  }`}
-                >
-                  <AppText className="text-sm font-medium text-slate-800 dark:text-slate-200">
-                    🤝 Pemilik barang target yang menambah uang ke saya
-                  </AppText>
-                  <View
-                    className={`w-4 h-4 rounded-full border ${
-                      cashPayer === 'target_owner' ? 'border-brand-600 bg-brand-600' : 'border-slate-400'
-                    }`}
-                  />
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
         </View>
 
-        {/* Step 4: Proposal Summary Comparison */}
+        {/* ── Step 3: Kalkulasi Tukar Tambah ─────────────────── */}
         {selectedItem && (
-          <View className="bg-slate-100 dark:bg-slate-800/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 mb-6">
-            <AppText variant="caption" className="text-slate-500 font-bold uppercase tracking-wider mb-2 text-center">
-              Ringkasan Transaksi Barter
+          <View style={{ marginBottom: 20 }}>
+            <AppText variant="caption" className="text-slate-500 font-bold uppercase tracking-wider mb-2">
+              3. Kalkulasi Tukar Tambah
             </AppText>
-            <View className="flex-row items-center justify-between">
-              <View className="items-center flex-1">
-                <AppText variant="caption" className="text-brand-600 font-bold mb-1">
-                  Barang Anda
-                </AppText>
-                <AppText className="text-xs font-semibold text-center text-slate-800 dark:text-slate-200" numberOfLines={2}>
-                  {selectedItem.title}
-                </AppText>
-              </View>
 
-              <View className="px-3 items-center">
-                <AppText className="text-2xl font-bold text-brand-600">⇄</AppText>
-                {includeCash && cashAmount && (
-                  <View className="bg-amber-100 dark:bg-amber-950 px-2 py-0.5 rounded-full mt-1">
-                    <AppText className="text-[10px] text-amber-800 dark:text-amber-200 font-bold">
-                      +Rp {parseInt(cashAmount.replace(/[^0-9]/g, '') || '0', 10).toLocaleString('id-ID')}
-                    </AppText>
+            {/* Combined Single Card: Perbandingan Estimasi & Info Tukar Tambah */}
+            <View style={{ backgroundColor: '#fff', borderRadius: 20, borderWidth: 1, borderColor: '#e2e8f0', padding: 16 }}>
+              <AppText style={{ textAlign: 'center', fontSize: 11, fontWeight: '700', color: '#64748b', marginBottom: 14, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                Perbandingan Estimasi Harga
+              </AppText>
+
+              {autoCalcAvailable && myPrice && theirPrice ? (
+                <>
+                  {/* Price bar comparison */}
+                  <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
+                    {/* My item */}
+                    <View style={{ flex: 1, alignItems: 'center' }}>
+                      <AppText style={{ fontSize: 11, fontWeight: '700', color: '#059669', marginBottom: 4 }}>Barang Anda</AppText>
+                      <AppText style={{ fontSize: 13, fontWeight: '800', color: '#059669', marginBottom: 6 }}>{formatRp(myPrice)}</AppText>
+                      <View style={{ width: '100%', height: 8, backgroundColor: '#f1f5f9', borderRadius: 4 }}>
+                        <View style={{ height: 8, borderRadius: 4, backgroundColor: '#059669', width: `${(myPrice / maxPrice) * 100}%` }} />
+                      </View>
+                    </View>
+                    {/* Divider */}
+                    <View style={{ width: 1, backgroundColor: '#e2e8f0', marginVertical: 4 }} />
+                    {/* Target item */}
+                    <View style={{ flex: 1, alignItems: 'center' }}>
+                      <AppText style={{ fontSize: 11, fontWeight: '700', color: '#2563eb', marginBottom: 4 }}>Barang Target</AppText>
+                      <AppText style={{ fontSize: 13, fontWeight: '800', color: '#2563eb', marginBottom: 6 }}>{formatRp(theirPrice)}</AppText>
+                      <View style={{ width: '100%', height: 8, backgroundColor: '#f1f5f9', borderRadius: 4 }}>
+                        <View style={{ height: 8, borderRadius: 4, backgroundColor: '#2563eb', width: `${(theirPrice / maxPrice) * 100}%` }} />
+                      </View>
+                    </View>
                   </View>
-                )}
+
+                  {/* Section Divider inside the same card */}
+                  <View style={{ height: 1, backgroundColor: '#f1f5f9', marginBottom: 14 }} />
+
+                  {/* Tukar Tambah Calculation Result */}
+                  {autoCalcDiff === 0 ? (
+                    <View style={{ backgroundColor: '#f0fdf4', borderRadius: 12, padding: 12, alignItems: 'center', borderWidth: 1, borderColor: '#bbf7d0' }}>
+                      <AppText style={{ fontSize: 13, fontWeight: '700', color: '#15803d' }}>✅ Nilai Kedua Barang Setara</AppText>
+                      <AppText style={{ fontSize: 12, color: '#166534', marginTop: 2, textAlign: 'center' }}>
+                        Tidak diperlukan uang tambahan. Barter murni sepadan nilainya.
+                      </AppText>
+                    </View>
+                  ) : (
+                    <View style={{
+                      backgroundColor: cashPayer === 'offerer' ? '#fefce8' : '#eff6ff',
+                      borderRadius: 14, padding: 14, borderWidth: 1,
+                      borderColor: cashPayer === 'offerer' ? '#fef08a' : '#bfdbfe',
+                    }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          {/* <AppText style={{ fontSize: 16 }}>{cashPayer === 'offerer' ? '💰' : '🤝'}</AppText> */}
+                          <AppText style={{ fontSize: 12, fontWeight: '700', color: cashPayer === 'offerer' ? '#854d0e' : '#1e40af', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                            Uang Tambahan (Tukar Tambah)
+                          </AppText>
+                        </View>
+                        <View style={{
+                          backgroundColor: cashPayer === 'offerer' ? '#fef08a' : '#dbeafe',
+                          paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8
+                        }}>
+                          {/* <AppText style={{ fontSize: 11, fontWeight: '700', color: cashPayer === 'offerer' ? '#713f12' : '#1e40af' }}>
+                            Selisih Otomatis
+                          </AppText> */}
+                        </View>
+                      </View>
+
+                      {/* Read-only Nominal Display */}
+                      <View style={{ marginVertical: 4 }}>
+                        <AppText style={{ fontSize: 11, color: '#64748b', fontWeight: '500' }}>
+                          Nominal Tambahan:
+                        </AppText>
+                        <AppText style={{ fontSize: 20, fontWeight: '800', color: cashPayer === 'offerer' ? '#b45309' : '#1d4ed8', marginTop: 2 }}>
+                          {formatRp(autoCalcDiff)}
+                        </AppText>
+                      </View>
+
+                      {/* Single payer indicator (read-only info, no selection) */}
+                      <View style={{
+                        backgroundColor: '#fff', borderRadius: 10, padding: 10, marginTop: 6,
+                        borderWidth: 1, borderColor: cashPayer === 'offerer' ? '#fde047' : '#bfdbfe'
+                      }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                          <Icon
+                            name={cashPayer === 'offerer' ? "arrow-forward-circle" : "arrow-back-circle"}
+                            size={16}
+                            color={cashPayer === 'offerer' ? "#b45309" : "#1d4ed8"}
+                          />
+                          <AppText style={{ fontSize: 13, fontWeight: '700', color: cashPayer === 'offerer' ? '#92400e' : '#1e40af', flex: 1 }}>
+                            {cashPayer === 'offerer'
+                              ? 'Anda yang menambahkan uang ke pemilik barang target'
+                              : 'Pemilik barang target yang menambahkan uang ke Anda'}
+                          </AppText>
+                        </View>
+                        <AppText style={{ fontSize: 11, color: '#64748b', marginTop: 4, lineHeight: 16 }}>
+                          {cashPayer === 'offerer'
+                            ? `Barang target bernilai lebih tinggi (${formatRp(theirPrice)} vs ${formatRp(myPrice)}). Anda menanggung selisih senilai ${formatRp(autoCalcDiff)}.`
+                            : `Barang Anda bernilai lebih tinggi (${formatRp(myPrice)} vs ${formatRp(theirPrice)}). Pemilik barang target akan menanggung selisih senilai ${formatRp(autoCalcDiff)}.`}
+                        </AppText>
+                      </View>
+                    </View>
+                  )}
+                </>
+              ) : (
+                <View style={{ backgroundColor: '#f8fafc', borderRadius: 12, padding: 14, alignItems: 'center', borderWidth: 1, borderColor: '#e2e8f0' }}>
+                  <Icon name="information-circle-outline" size={24} color="#94a3b8" />
+                  <AppText style={{ fontSize: 12, color: '#64748b', textAlign: 'center', marginTop: 6, lineHeight: 18 }}>
+                    Salah satu atau kedua barang belum memiliki estimasi harga.{'\n'}Transaksi diajukan sebagai barter langsung tanpa uang tambahan.
+                  </AppText>
+                </View>
+              )}
+            </View>
+          </View>
+        )}
+
+        {/* ── Step 4: Transaction Summary ──────────────────────── */}
+        {selectedItem && (
+          <View style={{ backgroundColor: '#f8fafc', borderRadius: 20, borderWidth: 1, borderColor: '#e2e8f0', padding: 16, marginBottom: 24 }}>
+            <AppText style={{ textAlign: 'center', fontSize: 11, fontWeight: '700', color: '#64748b', marginBottom: 14, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+              Ringkasan Proposal Barter
+            </AppText>
+
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              {/* My item thumbnail */}
+              <View style={{ flex: 1, alignItems: 'center' }}>
+                <View style={{ width: 60, height: 60, borderRadius: 12, overflow: 'hidden', backgroundColor: '#e2e8f0', marginBottom: 6 }}>
+                  {selectedItem.primary_image || selectedItem.images?.[0] ? (
+                    <Image source={{ uri: selectedItem.primary_image || selectedItem.images[0] }} style={{ width: 60, height: 60 }} resizeMode="cover" />
+                  ) : (
+                    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                      <AppText style={{ fontSize: 24 }}>📦</AppText>
+                    </View>
+                  )}
+                </View>
+                <AppText style={{ fontSize: 11, fontWeight: '700', color: '#059669', textAlign: 'center' }} numberOfLines={2}>{selectedItem.title}</AppText>
+                <AppText style={{ fontSize: 11, color: myPrice ? '#059669' : '#94a3b8', marginTop: 2 }}>
+                  {myPrice ? formatRp(myPrice) : 'Nilai Fleksibel'}
+                </AppText>
               </View>
 
-              <View className="items-center flex-1">
-                <AppText variant="caption" className="text-blue-600 font-bold mb-1">
-                  Barang Target
-                </AppText>
-                <AppText className="text-xs font-semibold text-center text-slate-800 dark:text-slate-200" numberOfLines={2}>
-                  {targetItem.title}
+              {/* Center: arrow + cash badge */}
+              <View style={{ alignItems: 'center' }}>
+                <AppText style={{ fontSize: 24, color: '#059669', fontWeight: '700' }}>⇄</AppText>
+                {autoCalcAvailable && autoCalcDiff > 0 ? (
+                  <View style={{ backgroundColor: '#fef3c7', borderRadius: 10, paddingHorizontal: 6, paddingVertical: 4, marginTop: 4, borderWidth: 1, borderColor: '#fde68a', alignItems: 'center' }}>
+                    <AppText style={{ fontSize: 10, fontWeight: '800', color: '#92400e' }}>+{formatRp(autoCalcDiff)}</AppText>
+                    <AppText style={{ fontSize: 9, color: '#78350f' }}>{cashPayer === 'offerer' ? 'dari Anda' : 'dari Pemilik'}</AppText>
+                  </View>
+                ) : (autoCalcDiff === 0 && autoCalcAvailable) ? (
+                  <View style={{ backgroundColor: '#f0fdf4', borderRadius: 10, paddingHorizontal: 6, paddingVertical: 4, marginTop: 4, borderWidth: 1, borderColor: '#bbf7d0' }}>
+                    <AppText style={{ fontSize: 9, fontWeight: '800', color: '#15803d', textAlign: 'center' }}>Setara ✓</AppText>
+                  </View>
+                ) : null}
+              </View>
+
+              {/* Target item thumbnail */}
+              <View style={{ flex: 1, alignItems: 'center' }}>
+                <View style={{ width: 60, height: 60, borderRadius: 12, overflow: 'hidden', backgroundColor: '#e2e8f0', marginBottom: 6 }}>
+                  {targetItem.primary_image || targetItem.images?.[0] ? (
+                    <Image source={{ uri: targetItem.primary_image || targetItem.images[0] }} style={{ width: 60, height: 60 }} resizeMode="cover" />
+                  ) : (
+                    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                      <AppText style={{ fontSize: 24 }}>📦</AppText>
+                    </View>
+                  )}
+                </View>
+                <AppText style={{ fontSize: 11, fontWeight: '700', color: '#2563eb', textAlign: 'center' }} numberOfLines={2}>{targetItem.title}</AppText>
+                <AppText style={{ fontSize: 11, color: theirPrice ? '#2563eb' : '#94a3b8', marginTop: 2 }}>
+                  {theirPrice ? formatRp(theirPrice) : 'Nilai Fleksibel'}
                 </AppText>
               </View>
             </View>
@@ -374,7 +460,7 @@ export default function CreateOfferScreen() {
       </ScrollView>
 
       {/* Floating Bottom Action Bar */}
-      <View className="absolute bottom-0 left-0 right-0 bg-white/95 dark:bg-slate-900/95 border-t border-slate-200 dark:border-slate-800 px-5 py-3 shadow-lg">
+      <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(255,255,255,0.97)', borderTopWidth: 1, borderTopColor: '#e2e8f0', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 24 }}>
         <Button
           title="Kirim Tawaran Barter Sekarang"
           variant="primary"
@@ -387,3 +473,4 @@ export default function CreateOfferScreen() {
     </SafeAreaView>
   );
 }
+

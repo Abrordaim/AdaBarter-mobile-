@@ -67,6 +67,13 @@ export const itemService = {
     return res.data;
   },
 
+  async getCities(): Promise<string[]> {
+    const res = await apiClient<string[]>('/items/cities', {
+      method: 'GET',
+    });
+    return res.data;
+  },
+
   async getMyItems(): Promise<BarterItem[]> {
     const res = await apiClient<BarterItem[]>('/my-items', {
       method: 'GET',

@@ -28,7 +28,9 @@ export default function HomeScreen() {
 
   // Hyperlocal City Picker Modal
   const [cityModalVisible, setCityModalVisible] = useState(false);
-  const [cityInput, setCityInput] = useState('');
+  const [cities, setCities] = useState<string[]>([]);
+  const [citiesLoading, setCitiesLoading] = useState(false);
+  const [citySearch, setCitySearch] = useState('');
 
   const fetchItems = async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true);
@@ -62,6 +64,24 @@ export default function HomeScreen() {
     }
   };
 
+  const fetchCities = async () => {
+    setCitiesLoading(true);
+    try {
+      const data = await itemService.getCities();
+      setCities(data);
+    } catch (e) {
+      console.log('Error fetching cities:', e);
+    } finally {
+      setCitiesLoading(false);
+    }
+  };
+
+  const openCityModal = () => {
+    setCitySearch('');
+    setCityModalVisible(true);
+    fetchCities();
+  };
+
   useEffect(() => {
     fetchInitialData();
   }, []);
@@ -82,14 +102,6 @@ export default function HomeScreen() {
     setSearchQuery('');
   };
 
-  const handleApplyCity = () => {
-    if (cityInput.trim()) {
-      setSelectedCity(cityInput.trim());
-    } else {
-      setSelectedCity(null);
-    }
-    setCityModalVisible(false);
-  };
 
   return (
     <MainTemplate
@@ -113,16 +125,13 @@ export default function HomeScreen() {
 
             {/* Hyperlocal Location Pill */}
             <TouchableOpacity
-              onPress={() => {
-                setCityInput(selectedCity || '');
-                setCityModalVisible(true);
-              }}
+              onPress={openCityModal}
               className="bg-emerald-700/80 border border-emerald-500/60 px-3 py-1.5 rounded-full flex-row items-center gap-1"
             >
+              <Icon name="location-outline" size={12} color="white" />
               <AppText className="text-xs text-white font-bold" numberOfLines={1}>
-                {selectedCity ||'Semua Kota'}
+                {selectedCity || 'Semua Kota'}
               </AppText>
-              {/* <AppText className="text-[10px] text-emerald-200">▾</AppText> */}
             </TouchableOpacity>
           </View>
 
@@ -237,57 +246,113 @@ export default function HomeScreen() {
         </View>
       )}
 
-      {/* Hyperlocal City Selection Modal */}
+      {/* Hyperlocal City Selection Modal — Dynamic list from DB */}
       <Modal
         visible={cityModalVisible}
         transparent
-        animationType="fade"
+        animationType="slide"
         onRequestClose={() => setCityModalVisible(false)}
       >
-        <View className="flex-1 bg-black/50 justify-center items-center px-6">
-          <View className="bg-white dark:bg-slate-800 w-full p-6 rounded-3xl shadow-lg">
-            <View className="items-center mb-4">
-              <View className="w-12 h-12  dark:bg-emerald-950 rounded-full items-center justify-center mb-2">
-                <AppText className="text-2xl"><Icon name={'location'} size={24} color={'green'}/></AppText>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '80%' }}>
+            {/* Header */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 12, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' }}>
+              <View>
+                <AppText variant="h3" className="font-bold text-slate-900">Pilih Kota</AppText>
+                <AppText variant="caption" className="text-slate-500 mt-0.5">Tampilkan barang barter dari kota tertentu</AppText>
               </View>
-              <AppText variant="h3" className="font-bold text-center text-slate-900 dark:text-white">
-                Filter Wilayah Lokal (COD)
-              </AppText>
-              <AppText variant="caption" className="text-center text-slate-500 dark:text-slate-400 mt-1">
-                Barter lebih mudah dan aman dengan mencari barang di kota atau sekitar area tempat tinggalmu.
-              </AppText>
+              <TouchableOpacity
+                onPress={() => setCityModalVisible(false)}
+                style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: '#f1f5f9', alignItems: 'center', justifyContent: 'center' }}
+              >
+                <AppText className="text-slate-500 font-bold text-sm">✕</AppText>
+              </TouchableOpacity>
             </View>
 
-            <View className="border border-slate-300 dark:border-slate-600 rounded-xl px-4 py-2.5 mb-4 bg-slate-50 dark:bg-slate-900">
-              <TextInput
-                placeholder="Ketik nama kota (misal: Surabaya, Jakarta)"
-                placeholderTextColor="#94a3b8"
-                value={cityInput}
-                onChangeText={setCityInput}
-                className="text-slate-900 dark:text-white font-medium text-base"
-                autoFocus
+            {/* Search box */}
+            <View style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8 }}>
+                <Icon name="search-outline" size={16} color="#94a3b8" />
+                <TextInput
+                  value={citySearch}
+                  onChangeText={setCitySearch}
+                  placeholder="Cari nama kota..."
+                  placeholderTextColor="#94a3b8"
+                  style={{ flex: 1, marginLeft: 8, fontSize: 14, color: '#0f172a' }}
+                />
+                {citySearch.length > 0 && (
+                  <TouchableOpacity onPress={() => setCitySearch('')}>
+                    <AppText className="text-slate-400 text-sm font-bold">✕</AppText>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+
+            {/* "Semua Kota" option */}
+            <TouchableOpacity
+              onPress={() => { setSelectedCity(null); setCityModalVisible(false); }}
+              style={{
+                flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14,
+                marginHorizontal: 16, marginBottom: 4, borderRadius: 12,
+                backgroundColor: selectedCity === null ? '#ecfdf5' : '#f8fafc',
+                borderWidth: 1,
+                borderColor: selectedCity === null ? '#6ee7b7' : '#e2e8f0',
+              }}
+            >
+              <Icon name="globe-outline" size={18} color={selectedCity === null ? '#059669' : '#94a3b8'} />
+              <AppText style={{ marginLeft: 12, fontSize: 15, fontWeight: '600', color: selectedCity === null ? '#059669' : '#334155' }}>
+                Semua Kota
+              </AppText>
+              {selectedCity === null && (
+                <View style={{ marginLeft: 'auto' }}>
+                  <Icon name="checkmark-circle" size={18} color="#059669" />
+                </View>
+              )}
+            </TouchableOpacity>
+
+            {/* City list */}
+            {citiesLoading ? (
+              <View style={{ paddingVertical: 32, alignItems: 'center' }}>
+                <ActivityIndicator size="small" color="#059669" />
+                <AppText variant="caption" className="text-slate-400 mt-2">Memuat daftar kota...</AppText>
+              </View>
+            ) : (
+              <FlatList
+                data={cities.filter(c => c.toLowerCase().includes(citySearch.toLowerCase()))}
+                keyExtractor={(item) => item}
+                contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 32, paddingTop: 4 }}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                ListEmptyComponent={
+                  <View style={{ paddingVertical: 32, alignItems: 'center' }}>
+                    <AppText className="text-slate-400 text-sm">
+                      {citySearch ? `Tidak ada kota "${citySearch}" di katalog saat ini.` : 'Belum ada kota tersedia saat ini.'}
+                    </AppText>
+                  </View>
+                }
+                renderItem={({ item: cityName }) => {
+                  const isSelected = selectedCity === cityName;
+                  return (
+                    <TouchableOpacity
+                      onPress={() => { setSelectedCity(cityName); setCityModalVisible(false); }}
+                      style={{
+                        flexDirection: 'row', alignItems: 'center', paddingVertical: 13,
+                        paddingHorizontal: 16, marginBottom: 6, borderRadius: 12,
+                        backgroundColor: isSelected ? '#ecfdf5' : '#fff',
+                        borderWidth: 1,
+                        borderColor: isSelected ? '#6ee7b7' : '#e2e8f0',
+                      }}
+                    >
+                      <Icon name="location-outline" size={16} color={isSelected ? '#059669' : '#94a3b8'} />
+                      <AppText style={{ marginLeft: 10, fontSize: 14, fontWeight: isSelected ? '700' : '500', color: isSelected ? '#059669' : '#334155', flex: 1 }}>
+                        {cityName}
+                      </AppText>
+                      {isSelected && <Icon name="checkmark-circle" size={18} color="#059669" />}
+                    </TouchableOpacity>
+                  );
+                }}
               />
-            </View>
-
-            <View className="flex-row gap-3">
-              <View className="flex-1">
-                <Button
-                  title="Semua Kota"
-                  variant="secondary"
-                  onPress={() => {
-                    setSelectedCity(null);
-                    setCityModalVisible(false);
-                  }}
-                />
-              </View>
-              <View className="flex-1">
-                <Button
-                  title="Terapkan"
-                  variant="primary"
-                  onPress={handleApplyCity}
-                />
-              </View>
-            </View>
+            )}
           </View>
         </View>
       </Modal>

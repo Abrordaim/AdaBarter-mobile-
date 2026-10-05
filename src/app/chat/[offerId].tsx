@@ -207,11 +207,11 @@ export default function ChatRoomScreen() {
                   <AppText className="text-xs text-center text-amber-900 dark:text-amber-200 leading-4 font-medium">
                     {msg.message}
                   </AppText>
-                  {msg.created_at && (
+                  {/* {msg.created_at && (
                     <AppText className="text-[10px] text-center text-amber-600 dark:text-amber-400 mt-1">
                       {new Date(msg.created_at).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
                     </AppText>
-                  )}
+                  )} */}
                 </View>
               </View>
             );
@@ -248,7 +248,7 @@ export default function ChatRoomScreen() {
                 </AppText>
                 <View className="flex-row justify-end items-center gap-1 mt-1">
                   <AppText
-                    className={`text-[8px] ${
+                    className={`text-xs ${
                       isMe ? 'text-emerald-100' : 'text-slate-400'
                     }`}
                   >
@@ -260,7 +260,7 @@ export default function ChatRoomScreen() {
                       : ''}
                   </AppText>
                   {isMe && (
-                    <AppText className="text-[8px] text-emerald-100">
+                    <AppText className="text-xs text-emerald-100">
                       {msg.read_at ? '✓✓' : '✓'}
                     </AppText>
                   )}
