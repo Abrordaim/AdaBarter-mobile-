@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { MainTemplate } from '@/components/templates';
 import { AppText, Button, Avatar, Badge, Icon, Input } from '@/components/atoms';
+import { UserReviewsModal } from '@/components/organisms';
 import { useAuth } from '@/context/AuthContext';
 import { userService, UserProfileData } from '@/services/userService';
 import { voucherService } from '@/services/voucherService';
@@ -25,6 +26,7 @@ export default function ProfileScreen() {
   const [editCity, setEditCity] = useState('');
   const [newAvatarAsset, setNewAvatarAsset] = useState<ImagePicker.ImagePickerAsset | null>(null);
   const [updatingProfile, setUpdatingProfile] = useState(false);
+  const [myReviewsModalVisible, setMyReviewsModalVisible] = useState(false);
 
   // My items state
   const [myItems, setMyItems] = useState<BarterItem[]>([]);
@@ -319,6 +321,23 @@ export default function ProfileScreen() {
                   </View>
                 ) : null}
               </View>
+
+              {/* User Barter Reputation Badge */}
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => setMyReviewsModalVisible(true)}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}
+              >
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: '#fef9c3', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8 }}>
+                  <Icon name="star" size={11} color="#ca8a04" />
+                  <AppText style={{ fontSize: 11, fontWeight: '800', color: '#854d0e' }}>
+                    {profile?.average_rating ?? user?.average_rating ? (profile?.average_rating ?? user?.average_rating)!.toFixed(1) : '-'}
+                  </AppText>
+                </View>
+                <AppText style={{ fontSize: 11, color: '#059669', fontWeight: '600' }}>
+                  ({profile?.ratings_count ?? user?.ratings_count ?? 0} ulasan barter) ›
+                </AppText>
+              </TouchableOpacity>
             </View>
 
             <TouchableOpacity
@@ -599,6 +618,31 @@ export default function ProfileScreen() {
               )}
             </View>
           )}
+
+          {/* ── Ulasan & Reputasi Saya ── */}
+          <TouchableOpacity
+            onPress={() => setMyReviewsModalVisible(true)}
+            className="flex-row items-center justify-between p-4 border-b border-slate-100 dark:border-slate-700"
+          >
+            <View className="flex-row items-center gap-3">
+              <Icon name="star-outline" size={20} color="#eab308" />
+              <AppText variant="body" className="font-medium text-slate-800 dark:text-slate-200">
+                Ulasan & Reputasi Saya
+              </AppText>
+              <View style={{ backgroundColor: '#fef9c3', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                <Icon name="star" size={11} color="#ca8a04" />
+                <AppText style={{ fontSize: 11, fontWeight: '800', color: '#854d0e' }}>
+                  {profile?.average_rating ?? user?.average_rating ? (profile?.average_rating ?? user?.average_rating)!.toFixed(1) : '-'}
+                </AppText>
+              </View>
+            </View>
+            <View className="flex-row items-center gap-1">
+              <AppText variant="caption" className="text-slate-400">
+                {profile?.ratings_count ?? user?.ratings_count ?? 0} ulasan
+              </AppText>
+              <Icon name="chevron-forward" size={16} color="#94a3b8" />
+            </View>
+          </TouchableOpacity>
 
           <TouchableOpacity
             onPress={openEditProfile}
@@ -943,6 +987,16 @@ export default function ProfileScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* My Reviews Modal */}
+      {user && (
+        <UserReviewsModal
+          visible={myReviewsModalVisible}
+          userId={user.id}
+          userName={user.name}
+          onClose={() => setMyReviewsModalVisible(false)}
+        />
+      )}
     </MainTemplate>
   );
 }

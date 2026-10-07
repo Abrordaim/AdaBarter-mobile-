@@ -17,6 +17,8 @@ export interface User {
   total_items_count?: number;
   sent_offers_count?: number;
   received_offers_count?: number;
+  average_rating?: number | null;
+  ratings_count?: number;
   created_at?: string;
 }
 

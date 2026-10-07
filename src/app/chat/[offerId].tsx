@@ -3,6 +3,7 @@ import { View, ScrollView, TextInput, TouchableOpacity, ActivityIndicator, Alert
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppText, Button, Avatar, Badge, Icon } from '@/components/atoms';
+import { RatingModal } from '@/components/organisms';
 import { useAuth } from '@/context/AuthContext';
 import { chatService, ChatMessage } from '@/services/chatService';
 import { offerService, BarterOffer } from '@/services/offerService';
@@ -18,6 +19,7 @@ export default function ChatRoomScreen() {
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [ratingModalVisible, setRatingModalVisible] = useState(false);
 
   const scrollViewRef = useRef<ScrollView>(null);
 
@@ -89,8 +91,8 @@ export default function ChatRoomScreen() {
             setActionLoading(true);
             try {
               await offerService.completeOffer(offer.id);
-              Alert.alert('Selamat! 🎉', 'Transaksi barter telah dinyatakan selesai.');
               await loadChatData();
+              setRatingModalVisible(true);
             } catch (e: any) {
               Alert.alert('Gagal Menyelesaikan', e.message || 'Terjadi kesalahan.');
             } finally {
@@ -158,7 +160,27 @@ export default function ChatRoomScreen() {
 
         {/* Status / Action Button */}
         {isCompleted ? (
-          <Badge variant="info" text="Barter Selesai" />
+          offer.has_rated ? (
+            <Badge variant="success" text="Sudah Dinilai ⭐" />
+          ) : (
+            <TouchableOpacity
+              onPress={() => setRatingModalVisible(true)}
+              style={{
+                backgroundColor: '#eab308',
+                paddingHorizontal: 12,
+                paddingVertical: 6,
+                borderRadius: 20,
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 4,
+              }}
+            >
+              <Icon name="star" size={13} color="#ffffff" />
+              <AppText style={{ fontSize: 11, fontWeight: '700', color: '#ffffff' }}>
+                Beri Rating
+              </AppText>
+            </TouchableOpacity>
+          )
         ) : (
           <TouchableOpacity
             onPress={handleCompleteBarter}
@@ -171,6 +193,38 @@ export default function ChatRoomScreen() {
           </TouchableOpacity>
         )}
       </View>
+
+      {/* Rating Prompt Banner if Completed & Not Rated */}
+      {isCompleted && !offer.has_rated && (
+        <TouchableOpacity
+          onPress={() => setRatingModalVisible(true)}
+          style={{
+            backgroundColor: '#fefce8',
+            paddingHorizontal: 16,
+            paddingVertical: 10,
+            borderBottomWidth: 1,
+            borderBottomColor: '#fef08a',
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+            <AppText style={{ fontSize: 16 }}>⭐</AppText>
+            <View style={{ flex: 1 }}>
+              <AppText style={{ fontSize: 12, fontWeight: '700', color: '#854d0e' }}>
+                Beri Penilaian Barter
+              </AppText>
+              <AppText style={{ fontSize: 11, color: '#a16207' }}>
+                Ketuk di sini untuk memberi rating & ulasan kepada {otherUser?.name || 'mitra'}.
+              </AppText>
+            </View>
+          </View>
+          <AppText style={{ fontSize: 12, fontWeight: '700', color: '#b45309' }}>
+            Nilai Sekarang ›
+          </AppText>
+        </TouchableOpacity>
+      )}
 
       {/* Item Context Banner */}
       <View className="bg-emerald-50 dark:bg-emerald-950/40 px-4 py-2 border-b border-emerald-200 dark:border-emerald-800 flex-row items-center justify-between">
@@ -310,6 +364,23 @@ export default function ChatRoomScreen() {
           </View>
         )}
       </KeyboardAvoidingView>
+
+      {/* Barter Rating Modal */}
+      <RatingModal
+        visible={ratingModalVisible}
+        offerId={offer.id}
+        targetUser={otherUser ? {
+          id: otherUser.id,
+          name: otherUser.name,
+          avatar_url: otherUser.avatar_url,
+          city: otherUser.city,
+        } : null}
+        onClose={() => setRatingModalVisible(false)}
+        onSuccess={() => {
+          setRatingModalVisible(false);
+          loadChatData();
+        }}
+      />
     </SafeAreaView>
   );
 }

@@ -3,6 +3,7 @@ import { View, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator, Mo
 import { useRouter } from 'expo-router';
 import { MainTemplate } from '@/components/templates';
 import { AppText, Button, Badge, Avatar, Icon } from '@/components/atoms';
+import { RatingModal } from '@/components/organisms';
 import { useAuth } from '@/context/AuthContext';
 import { offerService, BarterOffer } from '@/services/offerService';
 
@@ -21,6 +22,10 @@ export default function TukarankuScreen() {
   const [rejectingOfferId, setRejectingOfferId] = useState<number | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
+
+  // Rating modal states
+  const [ratingModalVisible, setRatingModalVisible] = useState(false);
+  const [selectedRatingOffer, setSelectedRatingOffer] = useState<BarterOffer | null>(null);
 
   const fetchOffers = async (isRefresh = false) => {
     if (!isAuthenticated) {
@@ -150,12 +155,16 @@ export default function TukarankuScreen() {
     );
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, hasRated?: boolean) => {
     switch (status) {
       case 'matched':
         return <Badge variant="success" text=" Matched / Disepakati" />;
       case 'completed':
-        return <Badge variant="info" text="Barter Selesai" />;
+        return hasRated ? (
+          <Badge variant="success" text="Selesai & Dinilai ⭐" />
+        ) : (
+          <Badge variant="info" text="Barter Selesai" />
+        );
       case 'rejected':
         return <Badge variant="error" text="✕ Ditolak" />;
       case 'cancelled':
@@ -313,7 +322,7 @@ export default function TukarankuScreen() {
                         </AppText>
                       </View>
                     </View>
-                    {getStatusBadge(offer.status)}
+                    {getStatusBadge(offer.status, offer.has_rated)}
                   </View>
 
                   {/* Card Body: Items Comparison */}
@@ -464,17 +473,40 @@ export default function TukarankuScreen() {
 
                     {/* State 4: Completed */}
                     {offer.status === 'completed' && (
-                      <Button
-                        title="Lihat Catatan Chat"
-                        variant="secondary"
-                        size="sm"
-                        onPress={() =>
-                          router.push({
-                            pathname: '/chat/[offerId]',
-                            params: { offerId: offer.id.toString() },
-                          })
-                        }
-                      />
+                      <View className="flex-row gap-2">
+                        <View className="flex-1">
+                          <Button
+                            title="Catatan Chat"
+                            variant="secondary"
+                            size="sm"
+                            onPress={() =>
+                              router.push({
+                                pathname: '/chat/[offerId]',
+                                params: { offerId: offer.id.toString() },
+                              })
+                            }
+                          />
+                        </View>
+                        <View className="flex-1">
+                          {offer.has_rated ? (
+                            <View className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl py-2 items-center justify-center">
+                              <AppText className="text-xs text-emerald-700 dark:text-emerald-300 font-bold">
+                                ⭐ Sudah Dinilai
+                              </AppText>
+                            </View>
+                          ) : (
+                            <Button
+                              title="Beri Rating ⭐"
+                              variant="primary"
+                              size="sm"
+                              onPress={() => {
+                                setSelectedRatingOffer(offer);
+                                setRatingModalVisible(true);
+                              }}
+                            />
+                          )}
+                        </View>
+                      </View>
                     )}
 
                     {/* State 5: Rejected / Cancelled */}
@@ -540,6 +572,34 @@ export default function TukarankuScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Barter Rating Modal */}
+      {selectedRatingOffer && (
+        <RatingModal
+          visible={ratingModalVisible}
+          offerId={selectedRatingOffer.id}
+          targetUser={(() => {
+            const partner = selectedRatingOffer.offerer?.id === user?.id
+              ? selectedRatingOffer.target_owner
+              : selectedRatingOffer.offerer;
+            return partner ? {
+              id: partner.id,
+              name: partner.name,
+              avatar_url: partner.avatar_url,
+              city: partner.city,
+            } : null;
+          })()}
+          onClose={() => {
+            setRatingModalVisible(false);
+            setSelectedRatingOffer(null);
+          }}
+          onSuccess={() => {
+            setRatingModalVisible(false);
+            setSelectedRatingOffer(null);
+            fetchOffers(true);
+          }}
+        />
+      )}
     </MainTemplate>
   );
 }

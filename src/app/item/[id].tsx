@@ -213,7 +213,7 @@ export default function ItemDetailScreen() {
           className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 items-center justify-center"
         >
           {/* <AppText className="text-xl font-bold">‹</AppText> */}
-          <Icon name={'arrow-back'} size={24}/>
+          <Icon name={'arrow-back'} size={24} />
         </TouchableOpacity>
 
         <AppText variant="label" className="font-bold text-slate-800 dark:text-white" numberOfLines={1}>

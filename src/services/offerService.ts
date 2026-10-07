@@ -12,6 +12,12 @@ export interface BarterOffer {
   matched_at?: string | null;
   completed_at?: string | null;
   rejection_reason?: string | null;
+  has_rated?: boolean;
+  my_rating?: {
+    id: number;
+    rating: number;
+    comment?: string | null;
+  } | null;
   offerer?: User;
   target_owner?: User;
   offerer_item?: BarterItem;
