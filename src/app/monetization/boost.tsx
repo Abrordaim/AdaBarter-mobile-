@@ -13,7 +13,7 @@ export default function BoostItemScreen() {
   const { isAuthenticated } = useAuth();
 
   const [packages, setPackages] = useState<BoostPackage[]>([]);
-  const [selectedDays, setSelectedDays] = useState<number>(7);
+  const [selectedPackageId, setSelectedPackageId] = useState<number | null>(null);
   const [myItems, setMyItems] = useState<BarterItem[]>([]);
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
 
@@ -35,7 +35,12 @@ export default function BoostItemScreen() {
         monetizationService.getPlans(),
         itemService.getMyItems(),
       ]);
-      setPackages(plansData.boost_packages || []);
+      const boostPkgs = plansData.boost_packages || [];
+      setPackages(boostPkgs);
+      if (boostPkgs.length > 0) {
+        const preferred = boostPkgs.find((p) => p.days === 7) || boostPkgs[0];
+        setSelectedPackageId(preferred.id);
+      }
       const activeItems = items.filter((it) => it.status === 'active');
       setMyItems(activeItems);
 
@@ -57,7 +62,7 @@ export default function BoostItemScreen() {
       return;
     }
 
-    const pkg = packages.find((p) => p.days === selectedDays);
+    const pkg = packages.find((p) => p.id === selectedPackageId);
     if (!pkg) return;
 
     Alert.alert(
@@ -70,10 +75,10 @@ export default function BoostItemScreen() {
           onPress: async () => {
             setSubmitting(true);
             try {
-              await monetizationService.boostItem(selectedItemId, selectedDays);
+              await monetizationService.boostItem(selectedItemId, pkg.id, pkg.days);
               Alert.alert(
                 'Barang Berhasil Di-Boost! ⚡',
-                `Barang Anda kini telah diprioritaskan di posisi teratas etalase selama ${selectedDays} hari ke depan.`,
+                `Barang Anda kini telah diprioritaskan di posisi teratas etalase selama ${pkg.days} hari ke depan.`,
                 [
                   {
                     text: 'Lihat di Beranda',
@@ -205,11 +210,11 @@ export default function BoostItemScreen() {
 
         <View className="gap-3 mb-6">
           {packages.map((pkg) => {
-            const isSelected = selectedDays === pkg.days;
+            const isSelected = selectedPackageId === pkg.id;
             return (
               <TouchableOpacity
                 key={pkg.id}
-                onPress={() => setSelectedDays(pkg.days)}
+                onPress={() => setSelectedPackageId(pkg.id)}
                 className={`p-4 rounded-2xl border flex-row items-center justify-between ${
                   isSelected
                     ? 'bg-amber-50 dark:bg-amber-950 border-amber-500'
@@ -251,7 +256,11 @@ export default function BoostItemScreen() {
       {/* Floating Bottom Action */}
       <View className="absolute bottom-0 left-0 right-0 bg-white/95 dark:bg-slate-900/95 border-t border-slate-200 dark:border-slate-800 px-5 py-3 shadow-lg">
         <Button
-          title={`Aktifkan Boost ${selectedDays} Hari ⚡`}
+          title={
+            packages.find((p) => p.id === selectedPackageId)
+              ? `Aktifkan ${packages.find((p) => p.id === selectedPackageId)?.label} ⚡`
+              : 'Aktifkan Boost ⚡'
+          }
           variant="primary"
           size="lg"
           loading={submitting}

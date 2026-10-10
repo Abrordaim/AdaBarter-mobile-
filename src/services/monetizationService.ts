@@ -1,7 +1,8 @@
 import { apiClient } from './api';
 
+/** Paket VIP dari database (id adalah integer) */
 export interface SubscriptionPlan {
-  id: string;
+  id: number;
   name: string;
   duration_days: number;
   price: number;
@@ -11,8 +12,9 @@ export interface SubscriptionPlan {
   features: string[];
 }
 
+/** Paket iklan sorotan dari database (id adalah integer) */
 export interface BoostPackage {
-  id: string;
+  id: number;
   days: number;
   price: number;
   formatted_price: string;
@@ -21,8 +23,9 @@ export interface BoostPackage {
   description: string;
 }
 
+/** Paket slot dari database (id adalah integer) */
 export interface QuotaPackage {
-  id: string;
+  id: number;
   slots: number;
   price: number;
   formatted_price: string;
@@ -56,7 +59,11 @@ export const monetizationService = {
     return res.data;
   },
 
-  async subscribe(planId: string, paymentMethod = 'QRIS / Virtual Account (Simulasi)'): Promise<any> {
+  /**
+   * Berlangganan VIP.
+   * @param planId - integer ID dari database (bukan string seperti "vip_1m")
+   */
+  async subscribe(planId: number, paymentMethod = 'QRIS / Virtual Account (Simulasi)'): Promise<any> {
     const res = await apiClient('/monetization/subscribe', {
       method: 'POST',
       body: JSON.stringify({ plan_id: planId, payment_method: paymentMethod }),
@@ -64,18 +71,31 @@ export const monetizationService = {
     return res.data;
   },
 
-  async boostItem(itemId: number, days: number, paymentMethod = 'QRIS / Virtual Account (Simulasi)'): Promise<any> {
+  /**
+   * Boost barang listing menggunakan ID paket boost.
+   * @param boostPackageId - integer ID dari database boost_packages
+   * @param days - opsional durasi dalam hari
+   */
+  async boostItem(itemId: number, boostPackageId: number, days?: number, paymentMethod = 'QRIS / Virtual Account (Simulasi)'): Promise<any> {
     const res = await apiClient(`/monetization/items/${itemId}/boost`, {
       method: 'POST',
-      body: JSON.stringify({ days, payment_method: paymentMethod }),
+      body: JSON.stringify({
+        boost_package_id: boostPackageId,
+        days: days,
+        payment_method: paymentMethod,
+      }),
     });
     return res.data;
   },
 
-  async purchaseQuota(slots: number, paymentMethod = 'QRIS / Virtual Account (Simulasi)'): Promise<any> {
+  /**
+   * Beli kuota slot tambahan.
+   * @param slotPackageId - integer ID dari database slot_packages
+   */
+  async purchaseQuota(slotPackageId: number, paymentMethod = 'QRIS / Virtual Account (Simulasi)'): Promise<any> {
     const res = await apiClient('/monetization/quota/purchase', {
       method: 'POST',
-      body: JSON.stringify({ slots, payment_method: paymentMethod }),
+      body: JSON.stringify({ slot_package_id: slotPackageId, payment_method: paymentMethod }),
     });
     return res.data;
   },

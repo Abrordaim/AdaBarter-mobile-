@@ -41,6 +41,8 @@ export default function ProfileScreen() {
   // Quota purchase modal state
   const [quotaModalVisible, setQuotaModalVisible] = useState(false);
   const [purchasingQuota, setPurchasingQuota] = useState(false);
+  const [slotPackages, setSlotPackages] = useState<import('@/services/monetizationService').QuotaPackage[]>([]);
+  const [loadingSlots, setLoadingSlots] = useState(false);
 
   const fetchProfile = async () => {
     if (!isAuthenticated) return;
@@ -141,10 +143,25 @@ export default function ProfileScreen() {
     }
   };
 
-  const handlePurchaseQuota = async (slots: number, price: string) => {
+  const openQuotaModal = async () => {
+    setQuotaModalVisible(true);
+    if (slotPackages.length === 0) {
+      setLoadingSlots(true);
+      try {
+        const data = await monetizationService.getPlans();
+        setSlotPackages(data.quota_packages || []);
+      } catch {
+        // keep empty, will show fallback
+      } finally {
+        setLoadingSlots(false);
+      }
+    }
+  };
+
+  const handlePurchaseQuota = async (pkg: import('@/services/monetizationService').QuotaPackage) => {
     Alert.alert(
       'Beli Slot Kuota Tambahan',
-      `Beli +${slots} slot posting seharga ${price}? (Simulasi pembayaran localhost)`,
+      `Beli ${pkg.label} seharga ${pkg.formatted_price}? (Simulasi pembayaran localhost)`,
       [
         { text: 'Batal', style: 'cancel' },
         {
@@ -152,10 +169,10 @@ export default function ProfileScreen() {
           onPress: async () => {
             setPurchasingQuota(true);
             try {
-              const res = await monetizationService.purchaseQuota(slots);
+              const res = await monetizationService.purchaseQuota(pkg.id);
               Alert.alert(
-                'Pembelian Berhasil! ',
-                `Kuota posting Anda bertambah +${slots} slot. Sisa kuota aktif Anda saat ini: ${res.remaining_quota}.`
+                'Pembelian Berhasil! 🎉',
+                `Kuota posting Anda bertambah +${pkg.slots} slot. Sisa kuota aktif Anda saat ini: ${res.remaining_quota}.`
               );
               setQuotaModalVisible(false);
               await fetchProfile();
@@ -334,19 +351,19 @@ export default function ProfileScreen() {
                     {profile?.average_rating ?? user?.average_rating ? (profile?.average_rating ?? user?.average_rating)!.toFixed(1) : '-'}
                   </AppText>
                 </View>
-                <AppText style={{ fontSize: 11, color: '#059669', fontWeight: '600' }}>
+                {/* <AppText style={{ fontSize: 11, color: '#059669', fontWeight: '600' }}>
                   ({profile?.ratings_count ?? user?.ratings_count ?? 0} ulasan barter) ›
-                </AppText>
+                </AppText> */}
               </TouchableOpacity>
             </View>
 
-            <TouchableOpacity
+            {/* <TouchableOpacity
               onPress={openEditProfile}
               activeOpacity={0.7}
               className="bg-brand-50 dark:bg-brand-950/40 p-2.5 rounded-xl border border-brand-200 dark:border-brand-800 items-center justify-center"
             >
               <Icon name="create-outline" size={20} color="#059669" />
-            </TouchableOpacity>
+            </TouchableOpacity> */}
           </View>
         </View>
 
@@ -411,7 +428,7 @@ export default function ProfileScreen() {
                 <AppText className="text-[10px] text-white font-bold">Voucher</AppText>
               </TouchableOpacity>
               <TouchableOpacity
-                onPress={() => setQuotaModalVisible(true)}
+                onPress={openQuotaModal}
                 className="bg-amber-500 px-2.5 py-1 rounded-full flex-row items-center gap-1 shadow-sm"
               >
                 <AppText className="text-[10px] text-white font-bold">Beli Slot</AppText>
@@ -627,11 +644,11 @@ export default function ProfileScreen() {
             <View className="flex-row items-center gap-3">
               <Icon name="star-outline" size={20} color="#eab308" />
               <AppText variant="body" className="font-medium text-slate-800 dark:text-slate-200">
-                Ulasan & Reputasi Saya
+                Ulasan & Reputasi 
               </AppText>
               <View style={{ backgroundColor: '#fef9c3', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 3 }}>
                 <Icon name="star" size={11} color="#ca8a04" />
-                <AppText style={{ fontSize: 11, fontWeight: '800', color: '#854d0e' }}>
+                <AppText style={{ fontSize: 10, fontWeight: '800', color: '#854d0e' }}>
                   {profile?.average_rating ?? user?.average_rating ? (profile?.average_rating ?? user?.average_rating)!.toFixed(1) : '-'}
                 </AppText>
               </View>
@@ -816,39 +833,39 @@ export default function ProfileScreen() {
             </View>
 
             <View className="gap-2.5 mb-5">
-              <TouchableOpacity
-                onPress={() => handlePurchaseQuota(1, 'Rp 10.000')}
-                className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 flex-row items-center justify-between"
-              >
-                <AppText className="font-bold text-slate-800 dark:text-slate-200">+1 Slot Barang</AppText>
-                <AppText className="font-extrabold text-brand-600">Rp 10.000</AppText>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => handlePurchaseQuota(3, 'Rp 25.000')}
-                className="p-3.5 rounded-xl border border-amber-400 bg-amber-50/50 dark:bg-amber-950/20 flex-row items-center justify-between"
-              >
-                <View className="flex-row items-center gap-2">
-                  <AppText className="font-bold text-slate-800 dark:text-slate-200">+3 Slot Barang</AppText>
-                  <View className="bg-amber-400 px-1.5 py-0.5 rounded">
-                    <AppText className="text-[10px] font-bold text-slate-900">Hemat 5rb</AppText>
-                  </View>
+              {loadingSlots ? (
+                <View className="py-6 items-center justify-center">
+                  <ActivityIndicator size="small" color="#059669" />
+                  <AppText variant="caption" className="text-slate-500 mt-2">
+                    Memuat paket slot...
+                  </AppText>
                 </View>
-                <AppText className="font-extrabold text-brand-600">Rp 25.000</AppText>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => handlePurchaseQuota(5, 'Rp 40.000')}
-                className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 flex-row items-center justify-between"
-              >
-                <View className="flex-row items-center gap-2">
-                  <AppText className="font-bold text-slate-800 dark:text-slate-200">+5 Slot Barang</AppText>
-                  <View className="bg-emerald-500 px-1.5 py-0.5 rounded">
-                    <AppText className="text-[10px] font-bold text-white">Hemat 10rb</AppText>
-                  </View>
+              ) : slotPackages.length > 0 ? (
+                slotPackages.map((pkg) => (
+                  <TouchableOpacity
+                    key={pkg.id}
+                    onPress={() => handlePurchaseQuota(pkg)}
+                    disabled={purchasingQuota}
+                    className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 flex-row items-center justify-between"
+                  >
+                    <View className="flex-row items-center gap-2">
+                      <AppText className="font-bold text-slate-800 dark:text-slate-200">{pkg.label}</AppText>
+                      {pkg.badge ? (
+                        <View className="bg-amber-400 px-1.5 py-0.5 rounded">
+                          <AppText className="text-[10px] font-bold text-slate-900">{pkg.badge}</AppText>
+                        </View>
+                      ) : null}
+                    </View>
+                    <AppText className="font-extrabold text-brand-600">{pkg.formatted_price}</AppText>
+                  </TouchableOpacity>
+                ))
+              ) : (
+                <View className="py-4 items-center">
+                  <AppText variant="caption" className="text-slate-500">
+                    Tidak ada paket slot tersedia saat ini.
+                  </AppText>
                 </View>
-                <AppText className="font-extrabold text-brand-600">Rp 40.000</AppText>
-              </TouchableOpacity>
+              )}
             </View>
 
             <Button

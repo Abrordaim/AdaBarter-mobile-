@@ -102,7 +102,7 @@ export function UserReviewsModal({
                 <View style={{ backgroundColor: '#f8fafc', borderRadius: 20, borderWidth: 1, borderColor: '#e2e8f0', padding: 16, marginBottom: 16, flexDirection: 'row', alignItems: 'center', gap: 16 }}>
                   {/* Big score */}
                   <View style={{ alignItems: 'center', paddingRight: 14, borderRightWidth: 1, borderRightColor: '#e2e8f0' }}>
-                    <AppText style={{ fontSize: 32, fontWeight: '900', color: '#0f172a' }}>
+                    <AppText style={{ fontSize: 20, fontWeight: '900', color: '#0f172a' }}>
                       {count > 0 && avgRating > 0 ? avgRating.toFixed(1) : '-'}
                     </AppText>
                     <View style={{ flexDirection: 'row', gap: 2, marginVertical: 3 }}>

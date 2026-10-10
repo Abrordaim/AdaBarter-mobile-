@@ -11,7 +11,7 @@ export default function VipSubscriptionScreen() {
   const { user, isAuthenticated, refreshUser } = useAuth();
 
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
-  const [selectedPlanId, setSelectedPlanId] = useState<string>('vip_3m');
+  const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
@@ -29,7 +29,8 @@ export default function VipSubscriptionScreen() {
       const data = await monetizationService.getPlans();
       setPlans(data.subscription_plans || []);
       if (data.subscription_plans?.length > 0) {
-        setSelectedPlanId(data.subscription_plans[1]?.id || data.subscription_plans[0].id);
+        const preferredIdx = Math.min(1, data.subscription_plans.length - 1);
+        setSelectedPlanId(data.subscription_plans[preferredIdx]?.id ?? data.subscription_plans[0].id);
       }
     } catch (e: any) {
       Alert.alert('Gagal Memuat', e.message || 'Gagal memuat paket langganan.');
@@ -39,6 +40,7 @@ export default function VipSubscriptionScreen() {
   };
 
   const handleSubscribe = async () => {
+    if (selectedPlanId === null) return;
     const plan = plans.find((p) => p.id === selectedPlanId);
     if (!plan) return;
 

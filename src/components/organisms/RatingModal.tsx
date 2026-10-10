@@ -59,7 +59,7 @@ export function RatingModal({
         comment: comment.trim() || undefined,
       });
 
-      Alert.alert('Penilaian Terkirim! 🎉', 'Terima kasih atas ulasan Anda. Reputasi pengguna telah diperbarui.');
+      Alert.alert('Penilaian Terkirim! ', 'Terima kasih atas ulasan Anda. Reputasi pengguna telah diperbarui.');
       setComment('');
       setRating(5);
       onSuccess();
@@ -113,7 +113,7 @@ export function RatingModal({
                   >
                     <Icon
                       name={star <= rating ? 'star' : 'star-outline'}
-                      size={36}
+                      size={26}
                       color="#eab308"
                     />
                   </TouchableOpacity>
@@ -122,7 +122,7 @@ export function RatingModal({
 
               {/* Dynamic Rating Label */}
               <View style={{ marginTop: 8, backgroundColor: '#fef9c3', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 12 }}>
-                <AppText style={{ fontSize: 13, fontWeight: '700', color: '#854d0e', textAlign: 'center' }}>
+                <AppText style={{ fontSize: 10, fontWeight: '700', color: '#854d0e', textAlign: 'center' }}>
                   {RATING_LABELS[rating]?.emoji} {RATING_LABELS[rating]?.text}
                 </AppText>
               </View>
