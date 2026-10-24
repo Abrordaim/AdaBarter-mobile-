@@ -12,6 +12,12 @@ export interface BarterItem {
   estimated_price?: number | null;
   location?: string | null;
   city?: string | null;
+  province_id?: number | null;
+  province_name?: string | null;
+  regency_id?: number | null;
+  regency_name?: string | null;
+  district_id?: number | null;
+  district_name?: string | null;
   status: 'active' | 'inactive' | 'moderated' | 'traded';
   is_boosted: boolean;
   images: string[];
@@ -26,6 +32,9 @@ export interface ItemFilters {
   search?: string;
   category_id?: number;
   city?: string;
+  province_id?: number;
+  regency_id?: number;
+  district_id?: number;
   condition?: string;
   page?: number;
   per_page?: number;
@@ -40,6 +49,12 @@ export interface CreateItemData {
   estimated_price?: number;
   location?: string;
   city?: string;
+  province_id?: number;
+  province_name?: string;
+  regency_id?: number;
+  regency_name?: string;
+  district_id?: number;
+  district_name?: string;
 }
 
 export const itemService = {
@@ -47,6 +62,9 @@ export const itemService = {
     const params = new URLSearchParams();
     if (filters.search) params.append('search', filters.search);
     if (filters.category_id) params.append('category_id', filters.category_id.toString());
+    if (filters.province_id) params.append('province_id', filters.province_id.toString());
+    if (filters.regency_id) params.append('regency_id', filters.regency_id.toString());
+    if (filters.district_id) params.append('district_id', filters.district_id.toString());
     if (filters.city) params.append('city', filters.city);
     if (filters.condition) params.append('condition', filters.condition);
     if (filters.page) params.append('page', filters.page.toString());
@@ -91,6 +109,12 @@ export const itemService = {
     if (data.estimated_price !== undefined) formData.append('estimated_price', data.estimated_price.toString());
     if (data.location) formData.append('location', data.location);
     if (data.city) formData.append('city', data.city);
+    if (data.province_id !== undefined && data.province_id !== null) formData.append('province_id', data.province_id.toString());
+    if (data.province_name) formData.append('province_name', data.province_name);
+    if (data.regency_id !== undefined && data.regency_id !== null) formData.append('regency_id', data.regency_id.toString());
+    if (data.regency_name) formData.append('regency_name', data.regency_name);
+    if (data.district_id !== undefined && data.district_id !== null) formData.append('district_id', data.district_id.toString());
+    if (data.district_name) formData.append('district_name', data.district_name);
 
     // Append images as native RN FormData parts {uri, name, type}.
     // This bypasses Expo's Winter fetch and uses XMLHttpRequest which
@@ -131,6 +155,12 @@ export const itemService = {
     if (data.estimated_price !== undefined) formData.append('estimated_price', data.estimated_price.toString());
     if (data.location !== undefined) formData.append('location', data.location ?? '');
     if (data.city !== undefined) formData.append('city', data.city ?? '');
+    if (data.province_id !== undefined && data.province_id !== null) formData.append('province_id', data.province_id.toString());
+    if (data.province_name !== undefined) formData.append('province_name', data.province_name ?? '');
+    if (data.regency_id !== undefined && data.regency_id !== null) formData.append('regency_id', data.regency_id.toString());
+    if (data.regency_name !== undefined) formData.append('regency_name', data.regency_name ?? '');
+    if (data.district_id !== undefined && data.district_id !== null) formData.append('district_id', data.district_id.toString());
+    if (data.district_name !== undefined) formData.append('district_name', data.district_name ?? '');
     if (data.status !== undefined) formData.append('status', data.status);
 
     for (let index = 0; index < newImageAssets.length; index++) {

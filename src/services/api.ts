@@ -130,6 +130,14 @@ export async function apiClient<T = any>(
       const error: any = new Error(errorMessage);
       error.status = response.status;
       error.errors = data?.errors;
+      error.errorCode = data?.error_code;
+
+      // If the account has been banned, clear local auth token immediately
+      // so the AuthContext will log the user out on next render.
+      if (response.status === 403 && data?.error_code === 'ACCOUNT_BANNED') {
+        await TokenStorage.removeToken();
+      }
+
       throw error;
     }
 

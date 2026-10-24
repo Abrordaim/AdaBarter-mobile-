@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { View, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator, Modal, TextInput } from 'react-native';
-import { useRouter } from 'expo-router';
+import React, { useState, useCallback } from 'react';
+import { View, ScrollView, TouchableOpacity, Image, ActivityIndicator } from 'react-native';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { MainTemplate } from '@/components/templates';
 import { AppText, Button, Badge, Avatar, Icon } from '@/components/atoms';
-import { RatingModal } from '@/components/organisms';
 import { useAuth } from '@/context/AuthContext';
 import { offerService, BarterOffer } from '@/services/offerService';
 
@@ -16,16 +15,6 @@ export default function TukarankuScreen() {
   const [offers, setOffers] = useState<BarterOffer[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-
-  // Reject modal states
-  const [rejectModalVisible, setRejectModalVisible] = useState(false);
-  const [rejectingOfferId, setRejectingOfferId] = useState<number | null>(null);
-  const [rejectionReason, setRejectionReason] = useState('');
-  const [actionLoading, setActionLoading] = useState(false);
-
-  // Rating modal states
-  const [ratingModalVisible, setRatingModalVisible] = useState(false);
-  const [selectedRatingOffer, setSelectedRatingOffer] = useState<BarterOffer | null>(null);
 
   const fetchOffers = async (isRefresh = false) => {
     if (!isAuthenticated) {
@@ -46,132 +35,29 @@ export default function TukarankuScreen() {
     }
   };
 
-  useEffect(() => {
-    fetchOffers();
-  }, [activeTab, selectedStatus, isAuthenticated]);
-
-  const handleAccept = async (offer: BarterOffer) => {
-    Alert.alert(
-      'Terima Penawaran Barter? 🤝',
-      `Anda menyetujui pertukaran barang ini dengan ${offer.offerer?.name || 'penawar'}. Status akan menjadi Matched dan ruang chat negosiasi akan segera dibuka.`,
-      [
-        { text: 'Batal', style: 'cancel' },
-        {
-          text: 'Ya, Setujui Barter',
-          onPress: async () => {
-            setActionLoading(true);
-            try {
-              await offerService.acceptOffer(offer.id);
-              Alert.alert(
-                'Barter Disepakati (Matched)! 🎉',
-                'Ruang chat negosiasi telah dibuka. Silakan diskusikan titik temu (COD) dan waktu barter dengan penawar.',
-                [
-                  {
-                    text: 'Buka Chat Sekarang',
-                    onPress: () => router.push({ pathname: '/chat/[offerId]', params: { offerId: offer.id.toString() } }),
-                  },
-                  {
-                    text: 'Tutup',
-                    onPress: () => fetchOffers(),
-                  },
-                ]
-              );
-            } catch (e: any) {
-              Alert.alert('Gagal Menyetujui', e.message || 'Terjadi kesalahan.');
-            } finally {
-              setActionLoading(false);
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  const handleOpenReject = (offerId: number) => {
-    setRejectingOfferId(offerId);
-    setRejectionReason('');
-    setRejectModalVisible(true);
-  };
-
-  const handleConfirmReject = async () => {
-    if (!rejectingOfferId) return;
-    setActionLoading(true);
-    try {
-      await offerService.rejectOffer(rejectingOfferId, rejectionReason.trim() || undefined);
-      setRejectModalVisible(false);
-      Alert.alert('Tawaran Ditolak', 'Penawaran barter telah ditolak.');
+  useFocusEffect(
+    useCallback(() => {
       fetchOffers();
-    } catch (e: any) {
-      Alert.alert('Gagal Menolak', e.message || 'Terjadi kesalahan.');
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  const handleCancel = async (offerId: number) => {
-    Alert.alert('Batalkan Tawaran?', 'Apakah Anda yakin ingin membatalkan tawaran barter ini?', [
-      { text: 'Tidak', style: 'cancel' },
-      {
-        text: 'Ya, Batalkan',
-        style: 'destructive',
-        onPress: async () => {
-          setActionLoading(true);
-          try {
-            await offerService.cancelOffer(offerId);
-            Alert.alert('Sukses', 'Tawaran barter telah dibatalkan.');
-            fetchOffers();
-          } catch (e: any) {
-            Alert.alert('Gagal Membatalkan', e.message || 'Terjadi kesalahan.');
-          } finally {
-            setActionLoading(false);
-          }
-        },
-      },
-    ]);
-  };
-
-  const handleComplete = async (offerId: number) => {
-    Alert.alert(
-      'Selesaikan Transaksi Barter?',
-      'Pastikan Anda dan pihak penukar telah bertemu langsung (COD), memeriksa kondisi fisik barang, dan menuntaskan pertukaran.',
-      [
-        { text: 'Belum', style: 'cancel' },
-        {
-          text: 'Ya, Transaksi Selesai',
-          onPress: async () => {
-            setActionLoading(true);
-            try {
-              await offerService.completeOffer(offerId);
-              Alert.alert('Barter Selesai! ', 'Selamat! Transaksi barter telah berhasil dituntaskan.');
-              fetchOffers();
-            } catch (e: any) {
-              Alert.alert('Gagal Menyelesaikan', e.message || 'Terjadi kesalahan.');
-            } finally {
-              setActionLoading(false);
-            }
-          },
-        },
-      ]
-    );
-  };
+    }, [activeTab, selectedStatus, isAuthenticated])
+  );
 
   const getStatusBadge = (status: string, hasRated?: boolean) => {
     switch (status) {
       case 'matched':
-        return <Badge variant="success" text=" Matched / Disepakati" />;
+        return <Badge variant="success" text="Matched" />;
       case 'completed':
         return hasRated ? (
-          <Badge variant="success" text="Selesai & Dinilai ⭐" />
+          <Badge variant="success" text="Selesai ⭐" />
         ) : (
-          <Badge variant="info" text="Barter Selesai" />
+          <Badge variant="info" text="Selesai COD" />
         );
       case 'rejected':
-        return <Badge variant="error" text="✕ Ditolak" />;
+        return <Badge variant="error" text="Ditolak" />;
       case 'cancelled':
         return <Badge variant="neutral" text="Dibatalkan" />;
       case 'pending':
       default:
-        return <Badge variant="warning" text="Menunggu Persetujuan" />;
+        return <Badge variant="warning" text="Menunggu" />;
     }
   };
 
@@ -180,7 +66,7 @@ export default function TukarankuScreen() {
       <MainTemplate title="Tukaranku">
         <View className="px-6 py-16 items-center justify-center">
           <View className="w-20 h-20 bg-brand-100 dark:bg-brand-900/30 rounded-full items-center justify-center mb-6">
-            <Icon name={'repeat'} size={26} color={'green'}/>
+            <Icon name={'repeat'} size={26} color={'green'} />
           </View>
           <AppText variant="h2" className="text-center font-bold mb-2 text-slate-800 dark:text-white">
             Kelola Transaksi Barter
@@ -218,7 +104,7 @@ export default function TukarankuScreen() {
               setSelectedStatus(null);
             }}
             className={`flex-1 py-2.5 rounded-lg items-center ${
-              activeTab === 'received' ? 'bg-white dark:bg-slate-700' : ''
+              activeTab === 'received' ? 'bg-white dark:bg-slate-700 shadow-sm' : ''
             }`}
           >
             <AppText
@@ -236,7 +122,7 @@ export default function TukarankuScreen() {
               setSelectedStatus(null);
             }}
             className={`flex-1 py-2.5 rounded-lg items-center ${
-              activeTab === 'sent' ? 'bg-white dark:bg-slate-700' : ''
+              activeTab === 'sent' ? 'bg-white dark:bg-slate-700 shadow-sm' : ''
             }`}
           >
             <AppText
@@ -272,7 +158,7 @@ export default function TukarankuScreen() {
         </ScrollView>
       </View>
 
-      {/* Offers Feed */}
+      {/* Offers Feed (Simple Compact List) */}
       <View className="px-4 py-3">
         {loading ? (
           <View className="py-20 items-center justify-center">
@@ -283,7 +169,7 @@ export default function TukarankuScreen() {
           </View>
         ) : offers.length === 0 ? (
           <View className="py-20 items-center justify-center">
-            <Icon name={'people'} size={26} color={'green'} className='mb-3'/>
+            <Icon name={'repeat'} size={32} color={'#10b981'} className="mb-3" />
             <AppText variant="h3" className="font-bold text-slate-800 dark:text-white text-center mb-1">
               Tidak Ada Penawaran
             </AppText>
@@ -294,312 +180,126 @@ export default function TukarankuScreen() {
             </AppText>
           </View>
         ) : (
-          <View className="gap-4">
+          <View className="gap-2.5">
             {offers.map((offer) => {
               const otherUser = activeTab === 'received' ? offer.offerer : offer.target_owner;
-              const myItem = activeTab === 'received' ? offer.target_item : offer.offerer_item;
-              const theirItem = activeTab === 'received' ? offer.offerer_item : offer.target_item;
+              const offererItemsCount = offer.offerer_items?.length || (offer.offerer_item ? 1 : 0);
+              const offererTitle =
+                offer.offerer_items && offer.offerer_items.length > 1
+                  ? `${offer.offerer_items[0]?.title} (+${offer.offerer_items.length - 1} lainnya)`
+                  : offer.offerer_item?.title || 'Barang';
+              const targetTitle = offer.target_item?.title || 'Barang Target';
+
+              const offererImg = offer.offerer_item?.primary_image || offer.offerer_item?.images?.[0];
+              const targetImg = offer.target_item?.primary_image || offer.target_item?.images?.[0];
 
               return (
-                <View
+                <TouchableOpacity
                   key={offer.id}
-                  className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden shadow-sm"
+                  activeOpacity={0.7}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/offer/[id]',
+                      params: { id: offer.id.toString() },
+                    })
+                  }
+                  className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 p-3.5 shadow-sm active:bg-slate-50 dark:active:bg-slate-750"
                 >
-                  {/* Card Header */}
-                  <View className="p-3.5 bg-slate-50 dark:bg-slate-800/80 border-b border-slate-100 dark:border-slate-700 flex-row items-center justify-between">
-                    <View className="flex-row items-center gap-2.5 flex-1 pr-2">
+                  {/* Top Bar: Other User & Date & Status Badge */}
+                  <View className="flex-row items-center justify-between mb-2.5 pb-2 border-b border-slate-100 dark:border-slate-700/60">
+                    <View className="flex-row items-center gap-2 flex-1 pr-2">
                       <Avatar
                         name={otherUser?.name || 'User'}
                         url={otherUser?.avatar_url || undefined}
                         size="sm"
                       />
                       <View className="flex-1">
-                        <AppText variant="label" className="font-bold text-slate-900 dark:text-white" numberOfLines={1}>
+                        <AppText variant="label" className="font-bold text-slate-800 dark:text-slate-200 text-xs" numberOfLines={1}>
                           {otherUser?.name || 'Pengguna'}
                         </AppText>
-                        <AppText variant="caption" className="text-slate-400 text-xs">
-                          {offer.created_at ? new Date(offer.created_at).toLocaleDateString('id-ID') : ''}
+                        <AppText variant="caption" className="text-slate-400 text-[10px]">
+                          {offer.created_at
+                            ? new Date(offer.created_at).toLocaleDateString('id-ID', {
+                                day: 'numeric',
+                                month: 'short',
+                                year: 'numeric',
+                              })
+                            : ''}
                         </AppText>
                       </View>
                     </View>
                     {getStatusBadge(offer.status, offer.has_rated)}
                   </View>
 
-                  {/* Card Body: Items Comparison */}
-                  <View className="p-4">
-                    <View className="flex-row items-center justify-between gap-2">
-                      {/* Left: Barang Penawar */}
-                      <View className="flex-1 items-center">
-                        <View className="w-20 h-20 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-700 mb-1.5 border border-slate-200 dark:border-slate-700">
-                          {offer.offerer_item?.primary_image || offer.offerer_item?.images?.[0] ? (
-                            <Image
-                              source={{ uri: offer.offerer_item?.primary_image || offer.offerer_item?.images?.[0] }}
-                              className="w-full h-full"
-                              resizeMode="cover"
-                            />
-                          ) : (
-                            <View className="flex-1 items-center justify-center">
-                              <AppText className="text-2xl">📦</AppText>
-                            </View>
-                          )}
-                        </View>
-                        <AppText variant="caption" className="text-[11px] text-slate-500 font-bold mb-0.5">
-                          {activeTab === 'received' ? 'Barang Ditawarkan' : 'Barang Anda'}
-                        </AppText>
-                        <AppText className="text-xs font-semibold text-center text-slate-800 dark:text-slate-200" numberOfLines={2}>
-                          {offer.offerer_item?.title || 'Barang'}
-                        </AppText>
-                      </View>
-
-                      {/* Middle: Swap Indicator & Cash Badge */}
-                      <View className="items-center px-1">
-                        <View className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-950 items-center justify-center">
-                          <AppText className="text-base text-brand-600 font-bold">⇄</AppText>
-                        </View>
-                        {offer.cash_supplement && (
-                          <View className="bg-amber-100 dark:bg-amber-950 px-2 py-0.5 rounded-full mt-1.5">
-                            <AppText className="text-[10px] text-amber-800 dark:text-amber-200 font-bold text-center">
-                              +Rp {Number(offer.cash_supplement).toLocaleString('id-ID')}
-                            </AppText>
+                  {/* Middle: Thumbnails + Trade Titles + Chevron */}
+                  <View className="flex-row items-center gap-3">
+                    {/* Compact Thumbnails */}
+                    <View className="flex-row items-center">
+                      {/* Left Thumbnail (Offerer Item) */}
+                      <View className="w-12 h-12 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 relative">
+                        {offererImg ? (
+                          <Image source={{ uri: offererImg }} className="w-full h-full" resizeMode="cover" />
+                        ) : (
+                          <View className="flex-1 items-center justify-center">
+                            <AppText className="text-base">📦</AppText>
+                          </View>
+                        )}
+                        {offererItemsCount > 1 && (
+                          <View className="absolute bottom-0 right-0 bg-emerald-600 px-2 py-0.5 rounded-md">
+                            <AppText className="text-sm text-white font-bold ">{offererItemsCount}</AppText>
                           </View>
                         )}
                       </View>
 
-                      {/* Right: Barang Target */}
-                      <View className="flex-1 items-center">
-                        <View className="w-20 h-20 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-700 mb-1.5 border border-slate-200 dark:border-slate-700">
-                          {offer.target_item?.primary_image || offer.target_item?.images?.[0] ? (
-                            <Image
-                              source={{ uri: offer.target_item?.primary_image || offer.target_item?.images?.[0] }}
-                              className="w-full h-full"
-                              resizeMode="cover"
-                            />
-                          ) : (
-                            <View className="flex-1 items-center justify-center">
-                              <AppText className="text-2xl">📦</AppText>
-                            </View>
-                          )}
-                        </View>
-                        <AppText variant="caption" className="text-[11px] text-slate-500 font-bold mb-0.5">
-                          {activeTab === 'received' ? 'Barang Anda' : 'Barang Target'}
-                        </AppText>
-                        <AppText className="text-xs font-semibold text-center text-slate-800 dark:text-slate-200" numberOfLines={2}>
-                          {offer.target_item?.title || 'Barang'}
-                        </AppText>
+                      {/* Swap Arrow Indicator */}
+                      <View className="mx-1.5 items-center justify-center">
+                        <AppText className="text-brand-600 dark:text-emerald-400 font-bold text-sm">⇄</AppText>
+                      </View>
+
+                      {/* Right Thumbnail (Target Item) */}
+                      <View className="w-12 h-12 rounded-xl overflow-hidden bg-slate-100 dark:bg-slate-700 border border-slate-200 dark:border-slate-600">
+                        {targetImg ? (
+                          <Image source={{ uri: targetImg }} className="w-full h-full" resizeMode="cover" />
+                        ) : (
+                          <View className="flex-1 items-center justify-center">
+                            <AppText className="text-base">📦</AppText>
+                          </View>
+                        )}
                       </View>
                     </View>
 
-                    {/* Tukar Tambah Clarification */}
-                    {offer.cash_supplement && (
-                      <View className="mt-3 p-2 bg-amber-50 dark:bg-amber-950/30 rounded-lg border border-amber-200/60 dark:border-amber-800/60">
-                        <AppText variant="caption" className="text-amber-800 dark:text-amber-200 text-center text-xs">
-                          {offer.cash_supplement_by === 'offerer'
-                            ? `Uang tambahan +Rp ${Number(offer.cash_supplement).toLocaleString('id-ID')} dibayar oleh penawar (${offer.offerer?.name})`
-                            : `Uang tambahan +Rp ${Number(offer.cash_supplement).toLocaleString('id-ID')} dibayar oleh pemilik barang target (${offer.target_owner?.name})`}
-                        </AppText>
-                      </View>
-                    )}
+                    {/* Trade Info Text */}
+                    <View className="flex-1">
+                      <AppText variant="label" className="font-bold text-slate-900 dark:text-white text-xs" numberOfLines={1}>
+                        {activeTab === 'received' ? offererTitle : `${offererTitle} (Milik Anda)`}
+                      </AppText>
+                      <AppText variant="caption" className="text-slate-400 text-[11px] mt-0.5" numberOfLines={1}>
+                        ditukar: <AppText className="text-slate-700 dark:text-slate-300 font-semibold">{targetTitle}</AppText>
+                      </AppText>
 
-                    {/* Rejection Reason Notice */}
-                    {offer.status === 'rejected' && offer.rejection_reason && (
-                      <View className="mt-3 p-2.5 bg-red-50 dark:bg-red-950/30 rounded-lg border border-red-200 dark:border-red-800">
-                        <AppText variant="caption" className="text-red-700 dark:text-red-300 text-xs">
-                          Alasan Penolakan: "{offer.rejection_reason}"
-                        </AppText>
-                      </View>
-                    )}
+                      {/* Cash Supplement Tag if any */}
+                      {offer.cash_supplement && Number(offer.cash_supplement) > 0 ? (
+                        <View className="flex-row items-center mt-1">
+                          <View className="bg-amber-100 dark:bg-amber-950/60 px-1.5 py-0.5 rounded border border-amber-200 dark:border-amber-800">
+                            <AppText className="text-sm font-bold text-amber-800 dark:text-amber-200">
+                              +Rp {Number(offer.cash_supplement).toLocaleString('id-ID')}
+                            </AppText>
+                          </View>
+                        </View>
+                      ) : null}
+                    </View>
+
+                    {/* Right Chevron Indicator */}
+                    <View className="w-5 items-center justify-center">
+                      <AppText className="text-slate-300 dark:text-slate-600 text-lg font-bold">›</AppText>
+                    </View>
                   </View>
-
-                  {/* Card Actions Footer */}
-                  <View className="p-3 bg-slate-50 dark:bg-slate-800/60 border-t border-slate-100 dark:border-slate-700">
-                    {/* State 1: Received & Pending */}
-                    {activeTab === 'received' && offer.status === 'pending' && (
-                      <View className="flex-row gap-2">
-                        <View className="flex-1">
-                          <Button
-                            title="Tolak"
-                            variant="secondary"
-                            size="sm"
-                            onPress={() => handleOpenReject(offer.id)}
-                          />
-                        </View>
-                        <View className="flex-1">
-                          <Button
-                            title="Terima Barter"
-                            variant="primary"
-                            size="sm"
-                            onPress={() => handleAccept(offer)}
-                          />
-                        </View>
-                      </View>
-                    )}
-
-                    {/* State 2: Sent & Pending */}
-                    {activeTab === 'sent' && offer.status === 'pending' && (
-                      <Button
-                        title="Batalkan Tawaran"
-                        variant="secondary"
-                        size="sm"
-                        onPress={() => handleCancel(offer.id)}
-                      />
-                    )}
-
-                    {/* State 3: Matched -> Negotiate in Chat or Complete */}
-                    {offer.status === 'matched' && (
-                      <View className="flex-row gap-2">
-                        <View className="flex-1">
-                          <Button
-                            title="Buka Chat"
-                            variant="primary"
-                            size="sm"
-                            onPress={() =>
-                              router.push({
-                                pathname: '/chat/[offerId]',
-                                params: { offerId: offer.id.toString() },
-                              })
-                            }
-                          />
-                        </View>
-                        <View className="flex-1">
-                          <Button
-                            title="Selesaikan COD"
-                            variant="secondary"
-                            size="sm"
-                            onPress={() => handleComplete(offer.id)}
-                          />
-                        </View>
-                      </View>
-                    )}
-
-                    {/* State 4: Completed */}
-                    {offer.status === 'completed' && (
-                      <View className="flex-row gap-2">
-                        <View className="flex-1">
-                          <Button
-                            title="Catatan Chat"
-                            variant="secondary"
-                            size="sm"
-                            onPress={() =>
-                              router.push({
-                                pathname: '/chat/[offerId]',
-                                params: { offerId: offer.id.toString() },
-                              })
-                            }
-                          />
-                        </View>
-                        <View className="flex-1">
-                          {offer.has_rated ? (
-                            <View className="bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 rounded-xl py-2 items-center justify-center">
-                              <AppText className="text-xs text-emerald-700 dark:text-emerald-300 font-bold">
-                                ⭐ Sudah Dinilai
-                              </AppText>
-                            </View>
-                          ) : (
-                            <Button
-                              title="Beri Rating ⭐"
-                              variant="primary"
-                              size="sm"
-                              onPress={() => {
-                                setSelectedRatingOffer(offer);
-                                setRatingModalVisible(true);
-                              }}
-                            />
-                          )}
-                        </View>
-                      </View>
-                    )}
-
-                    {/* State 5: Rejected / Cancelled */}
-                    {(offer.status === 'rejected' || offer.status === 'cancelled') && (
-                      <View className="items-center py-1">
-                        <AppText variant="caption" className="text-slate-400">
-                          Tawaran ini telah selesai dan tidak dapat diubah lagi.
-                        </AppText>
-                      </View>
-                    )}
-                  </View>
-                </View>
+                </TouchableOpacity>
               );
             })}
           </View>
         )}
       </View>
-
-      {/* Reject Reason Modal */}
-      <Modal
-        visible={rejectModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setRejectModalVisible(false)}
-      >
-        <View className="flex-1 bg-black/50 justify-center items-center px-6">
-          <View className="bg-white dark:bg-slate-800 w-full p-6 rounded-3xl shadow-lg">
-            <AppText variant="h3" className="font-bold text-slate-900 dark:text-white mb-2">
-              Tolak Tawaran Barter
-            </AppText>
-            <AppText variant="caption" className="text-slate-500 mb-4">
-              Berikan alasan penolakan secara sopan agar penawar memahami preferensi Anda (opsional).
-            </AppText>
-
-            <TextInput
-              placeholder="Contoh: Maaf, saya sedang mencari tipe lain atau kondisi belum sesuai..."
-              placeholderTextColor="#94a3b8"
-              value={rejectionReason}
-              onChangeText={setRejectionReason}
-              multiline
-              numberOfLines={3}
-              className="bg-slate-50 dark:bg-slate-900 border border-slate-300 dark:border-slate-600 rounded-xl p-3 text-slate-900 dark:text-white mb-5"
-            />
-
-            <View className="flex-row gap-3">
-              <View className="flex-1">
-                <Button
-                  title="Batal"
-                  variant="secondary"
-                  onPress={() => setRejectModalVisible(false)}
-                />
-              </View>
-              <View className="flex-1">
-                <Button
-                  title="Konfirmasi Tolak"
-                  variant="primary"
-                  loading={actionLoading}
-                  className="bg-red-600"
-                  onPress={handleConfirmReject}
-                />
-              </View>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* Barter Rating Modal */}
-      {selectedRatingOffer && (
-        <RatingModal
-          visible={ratingModalVisible}
-          offerId={selectedRatingOffer.id}
-          targetUser={(() => {
-            const partner = selectedRatingOffer.offerer?.id === user?.id
-              ? selectedRatingOffer.target_owner
-              : selectedRatingOffer.offerer;
-            return partner ? {
-              id: partner.id,
-              name: partner.name,
-              avatar_url: partner.avatar_url,
-              city: partner.city,
-            } : null;
-          })()}
-          onClose={() => {
-            setRatingModalVisible(false);
-            setSelectedRatingOffer(null);
-          }}
-          onSuccess={() => {
-            setRatingModalVisible(false);
-            setSelectedRatingOffer(null);
-            fetchOffers(true);
-          }}
-        />
-      )}
     </MainTemplate>
   );
 }

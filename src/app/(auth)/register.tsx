@@ -3,6 +3,7 @@ import { View, TouchableOpacity, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { AuthTemplate } from '@/components/templates';
 import { Button, Input, AppText } from '@/components/atoms';
+import { RegionPicker, RegionValue } from '@/components/molecules';
 import { useAuth } from '@/context/AuthContext';
 
 export default function RegisterScreen() {
@@ -13,7 +14,14 @@ export default function RegisterScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
-  const [city, setCity] = useState('');
+  const [region, setRegion] = useState<RegionValue>({
+    provinceId: null,
+    provinceName: null,
+    regencyId: null,
+    regencyName: null,
+    districtId: null,
+    districtName: null,
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,7 +45,13 @@ export default function RegisterScreen() {
         email,
         password,
         phone: phone || undefined,
-        city: city || undefined,
+        city: region.regencyName || undefined,
+        province_id: region.provinceId || undefined,
+        province_name: region.provinceName || undefined,
+        regency_id: region.regencyId || undefined,
+        regency_name: region.regencyName || undefined,
+        district_id: region.districtId || undefined,
+        district_name: region.districtName || undefined,
       });
       Alert.alert('Sukses', 'Akun berhasil didaftarkan! Selamat datang di AdaBarter.', [
         { text: 'OK', onPress: () => router.replace('/(tabs)') },
@@ -100,11 +114,16 @@ export default function RegisterScreen() {
         keyboardType="phone-pad"
       />
 
-      <Input
-        label="Kota Domisili (Hyperlocal)"
-        placeholder="Contoh: Surabaya, Jakarta"
-        value={city}
-        onChangeText={setCity}
+      <RegionPicker
+        label="Wilayah Domisili (Hyperlocal COD)"
+        provinceId={region.provinceId}
+        provinceName={region.provinceName}
+        regencyId={region.regencyId}
+        regencyName={region.regencyName}
+        districtId={region.districtId}
+        districtName={region.districtName}
+        onChange={setRegion}
+        showDistrict={true}
       />
 
       <Input

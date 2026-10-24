@@ -40,7 +40,7 @@ export default function TabLayout() {
           title: '',
           tabBarIcon: ({ focused }) => (
             <View className="items-center justify-center -mt-6">
-              <View className="bg-brand-600 w-14 h-14 rounded-full items-center justify-center border-4 border-white dark:border-slate-900 shadow-sm">
+              <View className="bg-brand-600 w-14 h-14 rounded-full items-center justify-center  dark:border-slate-900 shadow-sm">
                 <Icon name="add" size={30} color="#ffffff" />
               </View>
             </View>

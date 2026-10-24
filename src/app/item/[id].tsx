@@ -322,15 +322,16 @@ export default function ItemDetailScreen() {
           )}
 
           <View className="flex-row items-center gap-4 pt-3 border-t border-slate-100 dark:border-slate-700">
-            <View className="flex-row items-center gap-1">
-              <AppText className="text-sm"><Icon name="location-outline" size={12} color='black' /></AppText>
-              <AppText variant="caption" className="text-slate-600 dark:text-slate-400 font-medium">
-                {item.city ? `${item.city}${item.location ? `, ${item.location}` : ''}` : 'Indonesia'}
+            <View className="flex-row items-center gap-1 flex-1">
+              <AppText className="text-sm"><Icon name="location-outline" size={14} color='#059669' /></AppText>
+              <AppText variant="caption" className="text-slate-600 dark:text-slate-400 font-medium" numberOfLines={2}>
+                {[item.district_name, item.regency_name || item.city, item.province_name].filter(Boolean).join(', ') || item.location || 'Indonesia'}
+                {item.location && (item.regency_name || item.city) ? ` (${item.location})` : ''}
               </AppText>
             </View>
             <View className="flex-row items-center gap-1">
-              <AppText className="text-sm"><Icon name="time-outline" size={12} color='black' /></AppText>
-              <AppText variant="caption" className="text-slate-500">
+              {/* <AppText className="text-sm"><Icon name="time-outline" size={12} color='black' /></AppText> */}
+              <AppText  className="text-xs text-slate-500">
                 {item.created_at ? new Date(item.created_at).toLocaleDateString('id-ID') : 'Baru saja'}
               </AppText>
             </View>
@@ -362,10 +363,30 @@ export default function ItemDetailScreen() {
 
         {/* Owner Profile Card */}
         {item.user && (
-          <View className="mx-4 p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700">
-            <AppText variant="caption" className="text-slate-400 font-bold mb-3 uppercase tracking-wider">
-              Pemilik Barang
-            </AppText>
+          <TouchableOpacity
+            activeOpacity={0.7}
+            onPress={() => {
+              if (item.user) {
+                router.push({
+                  pathname: '/user/[id]',
+                  params: { id: item.user.id.toString() },
+                });
+              }
+            }}
+            className="mx-4 p-4 bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm"
+          >
+            <View className="flex-row items-center justify-between mb-3">
+              <AppText variant="caption" className="text-slate-400 font-bold uppercase tracking-wider">
+                Pemilik Barang
+              </AppText>
+              {/* <View className="flex-row items-center gap-1">
+                <AppText className="text-xs text-brand-600 dark:text-emerald-400 font-semibold">
+                  Lihat Profil & Reputasi
+                </AppText>
+                <AppText className="text-slate-400 font-bold text-sm">›</AppText>
+              </View> */}
+            </View>
+
             <View className="flex-row items-center gap-3">
               <Avatar
                 name={item.user.name}
@@ -377,17 +398,20 @@ export default function ItemDetailScreen() {
                   <AppText variant="label" className="font-bold text-slate-900 dark:text-white">
                     {item.user.name}
                   </AppText>
-                  {item.user.is_vip && <Badge variant="warning" text="VIP" />}
+                  {/* {item.user.is_vip && <Badge variant="warning" text="VIP" />} */}
                 </View>
-                <AppText variant="caption" className="text-slate-500 mt-0.5 flex flex-row items-center ">
-                  <Icon name="location-outline" size={12} color="black" />
-                  <Text className='text-center'>
-                    {item.user.city || item.city || 'Domisili belum diatur'}
-                  </Text>
-                </AppText>
+                {/* <View className="flex-row items-center gap-1 mt-0.5">
+                  <Icon name="location-outline" size={12} color="#64748b" />
+                  <AppText variant="caption" className="text-slate-500">
+                    {item.user.regency_name || item.user.city || item.regency_name || item.city || 'Domisili belum diatur'}
+                  </AppText>
+                </View> */}
+              </View>
+              <View className="w-6 items-center justify-center">
+                <AppText className="text-slate-300 dark:text-slate-600 text-lg font-bold">›</AppText>
               </View>
             </View>
-          </View>
+          </TouchableOpacity>
         )}
         {/* Promotional & Commercial Banners */}
               {banners.length > 0 && (
@@ -462,11 +486,11 @@ export default function ItemDetailScreen() {
               <AppText variant="label" className="mb-2 text-slate-700">Alasan Laporan *</AppText>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
                 {[
-                  { value: 'penipuan', label: '🚨 Penipuan' },
-                  { value: 'barang_terlarang', label: '🚫 Barang Terlarang' },
-                  { value: 'deskripsi_palsu', label: '📝 Deskripsi Palsu' },
-                  { value: 'pelecehan', label: '😡 Pelecehan/Spam' },
-                  { value: 'lainnya', label: '❓ Lainnya' },
+                  { value: 'penipuan', label: 'Penipuan' },
+                  { value: 'barang_terlarang', label: 'Barang Terlarang' },
+                  { value: 'deskripsi_palsu', label: 'Deskripsi Palsu' },
+                  { value: 'pelecehan', label: 'Pelecehan/Spam' },
+                  { value: 'lainnya', label: 'Lainnya' },
                 ].map((opt) => (
                   <TouchableOpacity
                     key={opt.value}

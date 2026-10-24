@@ -28,8 +28,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const userData = await authService.getMe();
         setUser(userData);
       }
-    } catch (e) {
-      console.log('Failed to restore auth session:', e);
+    } catch (e: any) {
+      // If account is banned, the API returns 403 and api.ts already removed the token.
+      // We just ensure the in-memory state is cleared too.
+      console.log('Failed to restore auth session:', e?.message || e);
       await TokenStorage.removeToken();
       setToken(null);
       setUser(null);

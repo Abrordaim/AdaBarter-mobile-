@@ -3,3 +3,4 @@ export * from './BannerCarousel';
 export * from './FilterBar';
 export * from './RatingModal';
 export * from './UserReviewsModal';
+export * from './MidtransPaymentWebView';

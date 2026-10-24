@@ -6,6 +6,12 @@ export interface User {
   email: string;
   phone?: string | null;
   city?: string | null;
+  province_id?: number | null;
+  province_name?: string | null;
+  regency_id?: number | null;
+  regency_name?: string | null;
+  district_id?: number | null;
+  district_name?: string | null;
   avatar_url?: string | null;
   role: 'user' | 'admin' | 'super_admin';
   is_vip: boolean;
@@ -28,6 +34,12 @@ export interface RegisterData {
   password: string;
   phone?: string;
   city?: string;
+  province_id?: number;
+  province_name?: string;
+  regency_id?: number;
+  regency_name?: string;
+  district_id?: number;
+  district_name?: string;
 }
 
 export interface LoginData {

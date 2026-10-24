@@ -119,8 +119,14 @@ export default function ChatRoomScreen() {
 
   const isOfferer = user?.id === offer.offerer?.id;
   const otherUser = isOfferer ? offer.target_owner : offer.offerer;
-  const myItem = isOfferer ? offer.offerer_item : offer.target_item;
-  const theirItem = isOfferer ? offer.target_item : offer.offerer_item;
+  const offererItemCount = offer.offerer_items?.length || 1;
+  const offererItemTitle = offer.offerer_items && offer.offerer_items.length > 1
+    ? `${offer.offerer_items.length} Barang`
+    : (offer.offerer_item?.title || 'Barang');
+  const targetItemTitle = offer.target_item?.title || 'Barang';
+
+  const myItemTitle = isOfferer ? offererItemTitle : targetItemTitle;
+  const theirItemTitle = isOfferer ? targetItemTitle : offererItemTitle;
   const isCompleted = offer.status === 'completed';
 
   return (
@@ -148,13 +154,15 @@ export default function ChatRoomScreen() {
               </AppText>
               {otherUser?.is_vip && <Badge variant="warning" text="VIP" />}
             </View>
-            <AppText  className="flex-1 gap-8 dark:text-emerald-300" >
-               <AppText className='text-xs text-emerald-700 p-2 border'>{myItem?.title}</AppText>
-               <AppText> </AppText> 
-               <Icon name={'swap-horizontal'} size={10} color={'black'}/> 
-               <AppText> </AppText> 
-               <AppText className='text-xs text-emerald-700'>{theirItem?.title}</AppText>
-            </AppText>
+            <View className="flex-row items-center gap-1 mt-0.5">
+              <AppText className="text-xs text-emerald-700 dark:text-emerald-300 font-medium" numberOfLines={1}>
+                {myItemTitle}
+              </AppText>
+              <Icon name="swap-horizontal" size={12} color="#059669" />
+              <AppText className="text-xs text-emerald-700 dark:text-emerald-300 font-medium" numberOfLines={1}>
+                {theirItemTitle}
+              </AppText>
+            </View>
           </View>
         </View>
 
@@ -181,6 +189,20 @@ export default function ChatRoomScreen() {
               </AppText>
             </TouchableOpacity>
           )
+        ) : offer.payment_method === 'gateway' && (offer.price_difference ?? 0) > 0 ? (
+          <TouchableOpacity
+            onPress={() =>
+              router.push({
+                pathname: '/offer/[id]',
+                params: { id: offer.id.toString() },
+              })
+            }
+            className="bg-emerald-600 px-3 py-1.5 rounded-full shadow-sm active:bg-emerald-700"
+          >
+            <AppText className="text-xs text-white font-bold">
+              Status Escrow
+            </AppText>
+          </TouchableOpacity>
         ) : (
           <TouchableOpacity
             onPress={handleCompleteBarter}
@@ -193,6 +215,53 @@ export default function ChatRoomScreen() {
           </TouchableOpacity>
         )}
       </View>
+
+      {/* Escrow Status Banner */}
+      {offer.payment_method === 'gateway' && (offer.price_difference ?? 0) > 0 && (
+        <TouchableOpacity
+          onPress={() =>
+            router.push({
+              pathname: '/offer/[id]',
+              params: { id: offer.id.toString() },
+            })
+          }
+          style={{
+            backgroundColor: offer.escrow_status === 'DISPUTED' ? '#fef2f2' : '#ecfdf5',
+            paddingHorizontal: 16,
+            paddingVertical: 9,
+            borderBottomWidth: 1,
+            borderBottomColor: offer.escrow_status === 'DISPUTED' ? '#fecaca' : '#a7f3d0',
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+          }}
+        >
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+            <Icon
+              name={offer.escrow_status === 'DISPUTED' ? 'alert-circle' : 'shield-checkmark'}
+              size={18}
+              color={offer.escrow_status === 'DISPUTED' ? '#dc2626' : '#059669'}
+            />
+            <View style={{ flex: 1 }}>
+              <AppText
+                style={{
+                  fontSize: 12,
+                  fontWeight: '700',
+                  color: offer.escrow_status === 'DISPUTED' ? '#991b1b' : '#065f46',
+                }}
+              >
+                Rekening Bersama: {offer.escrow_status === 'WAITING_PAYMENT' ? 'Menunggu Pembayaran' : (offer.escrow_status === 'HELD' ? 'Dana Tertahan Aman' : (offer.escrow_status === 'WAITING_CONFIRMATION' ? 'Menunggu Konfirmasi' : (offer.escrow_status === 'DISPUTED' ? 'Dalam Sengketa' : 'Selesai')))}
+              </AppText>
+              <AppText style={{ fontSize: 10, color: '#64748b' }}>
+                Selisih Rp {Number(offer.price_difference).toLocaleString('id-ID')} • Ketuk untuk lihat rincian / kode
+              </AppText>
+            </View>
+          </View>
+          <AppText style={{ fontSize: 11, fontWeight: '700', color: '#059669' }}>
+            Detail ›
+          </AppText>
+        </TouchableOpacity>
+      )}
 
       {/* Rating Prompt Banner if Completed & Not Rated */}
       {isCompleted && !offer.has_rated && (

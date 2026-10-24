@@ -4,6 +4,7 @@ import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { MainTemplate } from '@/components/templates';
 import { AppText, Button, Input, Icon, Badge } from '@/components/atoms';
+import { RegionPicker, RegionValue } from '@/components/molecules';
 import { useAuth } from '@/context/AuthContext';
 import { itemService } from '@/services/itemService';
 import { categoryService, Category } from '@/services/categoryService';
@@ -26,7 +27,14 @@ export default function AddItemScreen() {
   const [condition, setCondition] = useState('bekas_baik');
   const [desiredItems, setDesiredItems] = useState('');
   const [estimatedPrice, setEstimatedPrice] = useState('');
-  const [city, setCity] = useState(user?.city || '');
+  const [region, setRegion] = useState<RegionValue>({
+    provinceId: user?.province_id || null,
+    provinceName: user?.province_name || null,
+    regencyId: user?.regency_id || null,
+    regencyName: user?.regency_name || user?.city || null,
+    districtId: user?.district_id || null,
+    districtName: user?.district_name || null,
+  });
   const [location, setLocation] = useState('');
   const [images, setImages] = useState<string[]>([]);
   const [imageAssets, setImageAssets] = useState<ImagePicker.ImagePickerAsset[]>([]);
@@ -39,8 +47,15 @@ export default function AddItemScreen() {
   }, []);
 
   useEffect(() => {
-    if (user?.city && !city) {
-      setCity(user.city);
+    if (user && !region.provinceId && !region.regencyId) {
+      setRegion({
+        provinceId: user.province_id || null,
+        provinceName: user.province_name || null,
+        regencyId: user.regency_id || null,
+        regencyName: user.regency_name || user.city || null,
+        districtId: user.district_id || null,
+        districtName: user.district_name || null,
+      });
     }
   }, [user]);
 
@@ -127,7 +142,13 @@ export default function AddItemScreen() {
           condition,
           desired_items: desiredItems.trim() || undefined,
           estimated_price: estimatedPrice ? parseFloat(estimatedPrice.replace(/[^0-9]/g, '')) : undefined,
-          city: city.trim() || undefined,
+          city: region.regencyName || user?.city || undefined,
+          province_id: region.provinceId || undefined,
+          province_name: region.provinceName || undefined,
+          regency_id: region.regencyId || undefined,
+          regency_name: region.regencyName || undefined,
+          district_id: region.districtId || undefined,
+          district_name: region.districtName || undefined,
           location: location.trim() || undefined,
         },
         imageAssets
@@ -150,6 +171,14 @@ export default function AddItemScreen() {
               setLocation('');
               setImages([]);
               setImageAssets([]);
+              setRegion({
+                provinceId: user?.province_id || null,
+                provinceName: user?.province_name || null,
+                regencyId: user?.regency_id || null,
+                regencyName: user?.regency_name || user?.city || null,
+                districtId: user?.district_id || null,
+                districtName: user?.district_name || null,
+              });
               router.replace('/(tabs)');
             },
           },
@@ -205,11 +234,11 @@ export default function AddItemScreen() {
         }`}>
           <View className="flex-row items-center justify-between">
             <View className="flex-row items-center gap-2">
-              <AppText className="text-lg">{canPost || isVip ? '✨' : '⚠️'}</AppText>
+              {/* <AppText className="text-lg">{canPost || isVip ? '✨' : '⚠️'}</AppText> */}
               <AppText variant="label" className={canPost || isVip ? 'text-emerald-900 dark:text-emerald-200 font-bold' : 'text-amber-900 dark:text-amber-200 font-bold'}>
                 {isVip
                   ? 'VIP: Kuota Posting Tanpa Batas'
-                  : `Sisa Kuota Posting: ${remainingQuota} barang aktif`}
+                  : `Sisa Kuota Posting: ${remainingQuota} barang `}
               </AppText>
             </View>
             {!canPost && !isVip && (
@@ -290,7 +319,7 @@ export default function AddItemScreen() {
                 <TouchableOpacity
                   key={cat.id}
                   onPress={() => setSelectedCategory(cat.id)}
-                  className={`px-4 py-2 rounded-xl flex-row items-center gap-1.5 border ${
+                  className={`px-4 py-2 rounded-xl flex-row items-center mx-1 border ${
                     isSelected
                       ? 'bg-brand-600 border-brand-600'
                       : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700'
@@ -372,23 +401,24 @@ export default function AddItemScreen() {
         </View>
 
         {/* Section 4: Location (Hyperlocal) */}
-        <View className="flex-row gap-3 mb-4">
-          <View className="flex-1">
-            <Input
-              label="Kota Domisili *"
-              placeholder="Contoh: Surabaya"
-              value={city}
-              onChangeText={setCity}
-            />
-          </View>
-          <View className="flex-1">
-            <Input
-              label="Area / Kecamatan"
-              placeholder="Contoh: Gubeng"
-              value={location}
-              onChangeText={setLocation}
-            />
-          </View>
+        <View className="mb-4">
+          <RegionPicker
+            label=" Lokasi Barang *"
+            provinceId={region.provinceId}
+            provinceName={region.provinceName}
+            regencyId={region.regencyId}
+            regencyName={region.regencyName}
+            districtId={region.districtId}
+            districtName={region.districtName}
+            onChange={setRegion}
+            showDistrict={true}
+          />
+          <Input
+            label="Alamat lengkap/spesifik (Opsional)"
+            placeholder="Contoh: Dekat Stasiun, Mall, atau Area Kampus"
+            value={location}
+            onChangeText={setLocation}
+          />
         </View>
 
         {/* Section 5: Description */}

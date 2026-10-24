@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { View, ScrollView, TouchableOpacity, Alert, Modal, TextInput, Text, Image, ActivityIndicator } from 'react-native';
+import { View, ScrollView, TouchableOpacity, Alert, Modal, Text, Image, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { MainTemplate } from '@/components/templates';
 import { AppText, Button, Avatar, Badge, Icon, Input } from '@/components/atoms';
+import { RegionPicker, RegionValue } from '@/components/molecules';
 import { UserReviewsModal } from '@/components/organisms';
 import { useAuth } from '@/context/AuthContext';
 import { userService, UserProfileData } from '@/services/userService';
-import { voucherService } from '@/services/voucherService';
+
 import { monetizationService } from '@/services/monetizationService';
 import { itemService, BarterItem } from '@/services/itemService';
 import { API_BASE_URL } from '@/services/api';
@@ -23,7 +24,14 @@ export default function ProfileScreen() {
   const [editProfileVisible, setEditProfileVisible] = useState(false);
   const [editName, setEditName] = useState('');
   const [editPhone, setEditPhone] = useState('');
-  const [editCity, setEditCity] = useState('');
+  const [editRegion, setEditRegion] = useState<RegionValue>({
+    provinceId: null,
+    provinceName: null,
+    regencyId: null,
+    regencyName: null,
+    districtId: null,
+    districtName: null,
+  });
   const [newAvatarAsset, setNewAvatarAsset] = useState<ImagePicker.ImagePickerAsset | null>(null);
   const [updatingProfile, setUpdatingProfile] = useState(false);
   const [myReviewsModalVisible, setMyReviewsModalVisible] = useState(false);
@@ -33,10 +41,7 @@ export default function ProfileScreen() {
   const [myItemsLoading, setMyItemsLoading] = useState(false);
   const [showMyItems, setShowMyItems] = useState(false);
 
-  // Voucher state
-  const [voucherModalVisible, setVoucherModalVisible] = useState(false);
-  const [voucherCode, setVoucherCode] = useState('');
-  const [claimingVoucher, setClaimingVoucher] = useState(false);
+  // Voucher: navigates to /vouchers screen (no local state needed)
 
   // Quota purchase modal state
   const [quotaModalVisible, setQuotaModalVisible] = useState(false);
@@ -118,30 +123,7 @@ export default function ProfileScreen() {
     setShowMyItems((prev) => !prev);
   };
 
-  const handleClaimVoucher = async () => {
-    if (!voucherCode.trim()) {
-      Alert.alert('Perhatian', 'Harap masukkan kode voucher.');
-      return;
-    }
 
-    setClaimingVoucher(true);
-    try {
-      const result = await voucherService.claimVoucher(voucherCode.trim());
-      Alert.alert(
-        'Klaim Berhasil! ',
-        `Selamat! Anda mendapatkan tambahan kuota +${result.voucher.quota_amount} postingan. Sisa kuota aktif Anda sekarang: ${result.remaining_quota}.`
-      );
-      setVoucherModalVisible(false);
-      setVoucherCode('');
-      await fetchProfile();
-      await refreshUser();
-    } catch (e: any) {
-      const msg = e.errors?.code?.[0] || e.message || 'Gagal mengklaim voucher.';
-      Alert.alert('Gagal Klaim Voucher', msg);
-    } finally {
-      setClaimingVoucher(false);
-    }
-  };
 
   const openQuotaModal = async () => {
     setQuotaModalVisible(true);
@@ -191,7 +173,14 @@ export default function ProfileScreen() {
   const openEditProfile = () => {
     setEditName(user?.name || profile?.name || '');
     setEditPhone(user?.phone || profile?.phone || '');
-    setEditCity(user?.city || profile?.city || '');
+    setEditRegion({
+      provinceId: user?.province_id ?? profile?.province_id ?? null,
+      provinceName: user?.province_name ?? profile?.province_name ?? null,
+      regencyId: user?.regency_id ?? profile?.regency_id ?? null,
+      regencyName: user?.regency_name ?? profile?.regency_name ?? user?.city ?? profile?.city ?? null,
+      districtId: user?.district_id ?? profile?.district_id ?? null,
+      districtName: user?.district_name ?? profile?.district_name ?? null,
+    });
     setNewAvatarAsset(null);
     setEditProfileVisible(true);
   };
@@ -231,7 +220,13 @@ export default function ProfileScreen() {
         {
           name: editName.trim(),
           phone: editPhone.trim() || undefined,
-          city: editCity.trim() || undefined,
+          city: editRegion.regencyName || undefined,
+          province_id: editRegion.provinceId || undefined,
+          province_name: editRegion.provinceName || undefined,
+          regency_id: editRegion.regencyId || undefined,
+          regency_name: editRegion.regencyName || undefined,
+          district_id: editRegion.districtId || undefined,
+          district_name: editRegion.districtName || undefined,
         },
         newAvatarAsset
       );
@@ -321,11 +316,11 @@ export default function ProfileScreen() {
               </AppText>
 
               <View className="flex-row items-center gap-3 flex-wrap mt-0.5">
-                {user?.city ? (
+                {user?.regency_name || user?.city ? (
                   <View className="flex-row items-center gap-1">
                     <Icon name="location-outline" size={12} color="#059669" />
                     <AppText variant="caption" className="text-slate-600 dark:text-slate-300 font-medium">
-                      {user.city}
+                      {user.district_name ? `${user.district_name}, ` : ''}{user.regency_name || user.city}
                     </AppText>
                   </View>
                 ) : null}
@@ -422,7 +417,7 @@ export default function ProfileScreen() {
             </View>
             <View className="flex-row gap-1.5">
               <TouchableOpacity
-                onPress={() => setVoucherModalVisible(true)}
+                onPress={() => router.push('/vouchers')}
                 className="bg-emerald-600 px-2.5 py-1 rounded-full flex-row items-center gap-1 shadow-sm"
               >
                 <AppText className="text-[10px] text-white font-bold">Voucher</AppText>
@@ -674,6 +669,25 @@ export default function ProfileScreen() {
             <AppText className="text-slate-400">›</AppText>
           </TouchableOpacity>
 
+          {/* ── Dompet & Saldo Saya ── */}
+          <TouchableOpacity
+            onPress={() => router.push('/user/wallet')}
+            className="flex-row items-center justify-between p-4 border-b border-slate-100 dark:border-slate-700"
+          >
+            <View className="flex-row items-center gap-3">
+              <Icon name="wallet-outline" size={20} color="#059669" />
+              <AppText variant="body" className="font-medium text-slate-800 dark:text-slate-200">
+                Dompet & Saldo Saya
+              </AppText>
+            </View>
+            <View className="flex-row items-center gap-1">
+              <AppText variant="caption" className="text-emerald-600 font-bold">
+                Tarik Saldo
+              </AppText>
+              <Icon name="chevron-forward" size={16} color="#94a3b8" />
+            </View>
+          </TouchableOpacity>
+
           <TouchableOpacity
             onPress={() => router.push('/(tabs)/tukaranku')}
             className="flex-row items-center justify-between p-4 border-b border-slate-100 dark:border-slate-700"
@@ -729,13 +743,13 @@ export default function ProfileScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            onPress={() => setVoucherModalVisible(true)}
+            onPress={() => router.push('/vouchers')}
             className="flex-row items-center justify-between p-4 border-b border-slate-100 dark:border-slate-700"
           >
             <View className="flex-row items-center gap-3">
-              <AppText className="text-lg"><Icon name={'card-sharp'} size={24} color={'gray'}/></AppText>
+              <AppText className="text-lg"><Icon name={'pricetag'} size={24} color={'gray'}/></AppText>
               <AppText variant="body" className="font-medium text-slate-800 dark:text-slate-200">
-                Klaim Voucher Tambahan Kuota
+                Voucher &amp; Promo Diskon
               </AppText>
             </View>
             <AppText className="text-slate-400">›</AppText>
@@ -756,61 +770,6 @@ export default function ProfileScreen() {
         </View>
       </View>
 
-      {/* Claim Voucher Modal */}
-      <Modal
-        visible={voucherModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setVoucherModalVisible(false)}
-      >
-        <View className="flex-1 bg-black/50 justify-center items-center px-6">
-          <View className="bg-white dark:bg-slate-800 w-full p-6 rounded-3xl shadow-lg">
-            <View className="items-center mb-4">
-              <View className="w-16 h-16 bg-emerald-100 dark:bg-emerald-950 rounded-full items-center justify-center mb-2">
-                <AppText className="text-3xl">🎟️</AppText>
-              </View>
-              <AppText variant="h3" className="font-bold text-center text-slate-900 dark:text-white">
-                Klaim Voucher Kuota
-              </AppText>
-              <AppText variant="caption" className="text-center text-slate-500 dark:text-slate-400 mt-1">
-                Masukkan kode voucher khusus untuk menambah batas kuota postingan aktif Anda secara gratis.
-              </AppText>
-            </View>
-
-            <View className="border border-slate-300 dark:border-slate-600 rounded-xl px-4 py-3 mb-4 bg-slate-50 dark:bg-slate-900">
-              <TextInput
-                placeholder="Contoh: WELCOME2024 atau BARTERFEST"
-                placeholderTextColor="#94a3b8"
-                autoCapitalize="characters"
-                value={voucherCode}
-                onChangeText={setVoucherCode}
-                className="text-center font-bold text-lg text-slate-900 dark:text-white tracking-widest"
-              />
-            </View>
-
-            <View className="flex-row gap-3">
-              <View className="flex-1">
-                <Button
-                  title="Batal"
-                  variant="secondary"
-                  onPress={() => {
-                    setVoucherModalVisible(false);
-                    setVoucherCode('');
-                  }}
-                />
-              </View>
-              <View className="flex-1">
-                <Button
-                  title="Klaim"
-                  variant="primary"
-                  loading={claimingVoucher}
-                  onPress={handleClaimVoucher}
-                />
-              </View>
-            </View>
-          </View>
-        </View>
-      </Modal>
 
       {/* Purchase Quota Modal */}
       <Modal
@@ -972,13 +931,16 @@ export default function ProfileScreen() {
                 leftIcon={<Icon name="call-outline" size={18} color="#94a3b8" />}
               />
 
-              <Input
-                label="Kota Domisili"
-                placeholder="Contoh: Jakarta Selatan"
-                value={editCity}
-                onChangeText={setEditCity}
-                maxLength={100}
-                leftIcon={<Icon name="location-outline" size={18} color="#94a3b8" />}
+              <RegionPicker
+                label="Wilayah Domisili "
+                provinceId={editRegion.provinceId}
+                provinceName={editRegion.provinceName}
+                regencyId={editRegion.regencyId}
+                regencyName={editRegion.regencyName}
+                districtId={editRegion.districtId}
+                districtName={editRegion.districtName}
+                onChange={setEditRegion}
+                showDistrict={true}
               />
 
               {/* Action Buttons */}

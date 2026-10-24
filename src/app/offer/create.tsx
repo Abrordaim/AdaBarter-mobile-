@@ -20,12 +20,13 @@ export default function CreateOfferScreen() {
 
   const [targetItem, setTargetItem] = useState<BarterItem | null>(null);
   const [myItems, setMyItems] = useState<BarterItem[]>([]);
-  const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
+  const [selectedItemIds, setSelectedItemIds] = useState<number[]>([]);
 
   // ── tukar-tambah states (read-only automatic calculation) ──
   const [cashPayer, setCashPayer] = useState<'offerer' | 'target_owner'>('offerer');
   const [autoCalcAvailable, setAutoCalcAvailable] = useState(false);
   const [autoCalcDiff, setAutoCalcDiff] = useState(0);
+  const [paymentMethod, setPaymentMethod] = useState<'gateway' | 'cod'>('gateway');
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -50,7 +51,7 @@ export default function CreateOfferScreen() {
       const activeItems = items.filter((it) => it.status === 'active');
       setMyItems(activeItems);
       if (activeItems.length > 0) {
-        setSelectedItemId(activeItems[0].id);
+        setSelectedItemIds([activeItems[0].id]);
       }
     } catch (e: any) {
       Alert.alert('Gagal Memuat', e.message || 'Gagal memuat informasi barter.', [
@@ -61,23 +62,39 @@ export default function CreateOfferScreen() {
     }
   };
 
+  const toggleSelectItem = (id: number) => {
+    setSelectedItemIds((prev) => {
+      if (prev.includes(id)) {
+        return prev.filter((item) => item !== id);
+      } else {
+        return [...prev, id];
+      }
+    });
+  };
+
   // ── Auto-calculate tukar tambah whenever item selection changes ──
   useEffect(() => {
-    if (!targetItem) return;
-    const myPrice = myItems.find((it) => it.id === selectedItemId)?.estimated_price
-      ? Number(myItems.find((it) => it.id === selectedItemId)!.estimated_price)
-      : null;
-    const theirPrice = targetItem.estimated_price ? Number(targetItem.estimated_price) : null;
-
-    if (!myPrice || !theirPrice) {
+    if (!targetItem || selectedItemIds.length === 0) {
       setAutoCalcAvailable(false);
       setCashPayer('offerer');
       setAutoCalcDiff(0);
       return;
     }
 
+    const selectedItems = myItems.filter((it) => selectedItemIds.includes(it.id));
+    const hasNullPrice = selectedItems.some((it) => it.estimated_price === null || it.estimated_price === undefined);
+    const theirPrice = targetItem.estimated_price ? Number(targetItem.estimated_price) : null;
+
+    if (hasNullPrice || !theirPrice || selectedItems.length === 0) {
+      setAutoCalcAvailable(false);
+      setCashPayer('offerer');
+      setAutoCalcDiff(0);
+      return;
+    }
+
+    const myTotalPrice = selectedItems.reduce((acc, it) => acc + Number(it.estimated_price), 0);
     setAutoCalcAvailable(true);
-    const diff = theirPrice - myPrice;
+    const diff = theirPrice - myTotalPrice;
 
     if (Math.abs(diff) === 0) {
       setCashPayer('offerer');
@@ -87,15 +104,15 @@ export default function CreateOfferScreen() {
       setCashPayer('offerer');
       setAutoCalcDiff(diff);
     } else {
-      // My item is more expensive → target owner pays the difference
+      // My item(s) are more expensive → target owner pays the difference
       setCashPayer('target_owner');
       setAutoCalcDiff(Math.abs(diff));
     }
-  }, [selectedItemId, targetItem, myItems]);
+  }, [selectedItemIds, targetItem, myItems]);
 
   const handleSubmit = async () => {
-    if (!targetItem || !selectedItemId) {
-      Alert.alert('Perhatian', 'Pilih salah satu barang milik Anda untuk ditukarkan.');
+    if (!targetItem || selectedItemIds.length === 0) {
+      Alert.alert('Perhatian', 'Pilih minimal satu barang milik Anda untuk ditukarkan.');
       return;
     }
 
@@ -104,19 +121,20 @@ export default function CreateOfferScreen() {
     setSubmitting(true);
     try {
       await offerService.createOffer({
-        offerer_item_id: selectedItemId,
+        offerer_item_ids: selectedItemIds,
         target_item_id: targetItem.id,
         cash_supplement: hasCashSupplement ? autoCalcDiff : undefined,
         cash_supplement_by: hasCashSupplement ? cashPayer : undefined,
-      });
+        payment_method: hasCashSupplement ? paymentMethod : 'cod',
+      } as any);
 
       Alert.alert(
-        'Tawaran Terkirim! ',
+        'Tawaran Terkirim! 🎉',
         'Tawaran barter berhasil dikirimkan kepada pemilik barang. Anda dapat memantau status persetujuan di tab Tukaranku.',
         [{ text: 'Buka Tukaranku', onPress: () => router.replace('/(tabs)/tukaranku') }]
       );
     } catch (e: any) {
-      const msg = e.errors?.target_item_id?.[0] || e.message || 'Gagal mengajukan barter.';
+      const msg = e.errors?.offerer_item_ids?.[0] || e.errors?.target_item_id?.[0] || e.message || 'Gagal mengajukan barter.';
       Alert.alert('Pengajuan Barter Gagal', msg);
     } finally {
       setSubmitting(false);
@@ -136,10 +154,12 @@ export default function CreateOfferScreen() {
 
   if (!targetItem) return null;
 
-  const selectedItem = myItems.find((it) => it.id === selectedItemId) ?? null;
-  const myPrice   = selectedItem?.estimated_price ? Number(selectedItem.estimated_price) : null;
-  const theirPrice = targetItem.estimated_price   ? Number(targetItem.estimated_price)   : null;
-  const maxPrice   = myPrice && theirPrice ? Math.max(myPrice, theirPrice) : 1;
+  const selectedItems = myItems.filter((it) => selectedItemIds.includes(it.id));
+  const myTotalPrice = selectedItems.length > 0 && !selectedItems.some((it) => it.estimated_price === null || it.estimated_price === undefined)
+    ? selectedItems.reduce((acc, it) => acc + Number(it.estimated_price), 0)
+    : null;
+  const theirPrice = targetItem.estimated_price ? Number(targetItem.estimated_price) : null;
+  const maxPrice = myTotalPrice && theirPrice ? Math.max(myTotalPrice, theirPrice) : 1;
 
   return (
     <SafeAreaView className="flex-1 bg-slate-50 dark:bg-slate-900" edges={['top']}>
@@ -195,12 +215,21 @@ export default function CreateOfferScreen() {
 
         {/* Step 2: Choose Your Item to Trade */}
         <View className="mb-5">
-          <View className=" mb-2">
+          <View className="flex-row items-center justify-between mb-1.5">
             <AppText variant="caption" className="text-slate-500 font-bold uppercase tracking-wider">
               2. Pilih Barang Anda untuk Ditukar *
             </AppText>
-            
+            {selectedItemIds.length > 0 && (
+              <View className="bg-emerald-100 dark:bg-emerald-950 px-2 py-0.5 rounded-full">
+                <AppText className="text-[11px] font-bold text-emerald-800 dark:text-emerald-200">
+                  {selectedItemIds.length} Dipilih
+                </AppText>
+              </View>
+            )}
           </View>
+          <AppText variant="caption" className="text-slate-400 text-xs mb-3">
+            Bisa pilih lebih dari satu barang milik Anda untuk ditukarkan.
+          </AppText>
 
           {myItems.length === 0 ? (
             <View className="bg-amber-50 dark:bg-amber-950/40 p-4 rounded-2xl border border-amber-200 dark:border-amber-800 items-center">
@@ -220,11 +249,11 @@ export default function CreateOfferScreen() {
           ) : (
             <View className="gap-2.5">
               {myItems.map((item) => {
-                const isSelected = selectedItemId === item.id;
+                const isSelected = selectedItemIds.includes(item.id);
                 return (
                   <TouchableOpacity
                     key={item.id}
-                    onPress={() => setSelectedItemId(item.id)}
+                    onPress={() => toggleSelectItem(item.id)}
                     className={`p-3 rounded-2xl border flex-row items-center gap-3 ${
                       isSelected
                         ? 'bg-emerald-50 dark:bg-emerald-950 border-brand-600'
@@ -258,29 +287,28 @@ export default function CreateOfferScreen() {
 
                     <View
                       style={{
-                        width: 22, height: 22, borderRadius: 11, borderWidth: 2,
+                        width: 22, height: 22, borderRadius: 6, borderWidth: 2,
                         alignItems: 'center', justifyContent: 'center',
                         borderColor: isSelected ? '#059669' : '#cbd5e1',
                         backgroundColor: isSelected ? '#059669' : 'transparent',
                       }}
                     >
-                      {isSelected && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#fff' }} />}
+                      {isSelected && <Icon name="checkmark" size={14} color="#fff" />}
                     </View>
                   </TouchableOpacity>
                 );
               })}
             </View>
-            
           )}
           <TouchableOpacity onPress={() => router.push('/(tabs)/add-item')}>
-              <AppText className=" bg-green-600 text-white w-32 text-sm font-bold px-2 py-1 mt-2 rounded-lg">
-                + Upload Barang
-              </AppText>
-            </TouchableOpacity>
+            <AppText className="bg-green-600 text-white w-32 text-sm font-bold px-2 py-1 mt-2 rounded-lg text-center">
+              + Upload Barang
+            </AppText>
+          </TouchableOpacity>
         </View>
 
         {/* ── Step 3: Kalkulasi Tukar Tambah ─────────────────── */}
-        {selectedItem && (
+        {selectedItems.length > 0 && (
           <View style={{ marginBottom: 20 }}>
             <AppText variant="caption" className="text-slate-500 font-bold uppercase tracking-wider mb-2">
               3. Kalkulasi Tukar Tambah
@@ -292,24 +320,32 @@ export default function CreateOfferScreen() {
                 Perbandingan Estimasi Harga
               </AppText>
 
-              {autoCalcAvailable && myPrice && theirPrice ? (
+              {autoCalcAvailable && myTotalPrice !== null && theirPrice !== null ? (
                 <>
                   {/* Price bar comparison */}
                   <View style={{ flexDirection: 'row', gap: 12, marginBottom: 16 }}>
-                    {/* My item */}
+                    {/* My items */}
                     <View style={{ flex: 1, alignItems: 'center' }}>
-                      <AppText style={{ fontSize: 11, fontWeight: '700', color: '#059669', marginBottom: 4 }}>Barang Anda</AppText>
-                      <AppText style={{ fontSize: 13, fontWeight: '800', color: '#059669', marginBottom: 6 }}>{formatRp(myPrice)}</AppText>
+                      <AppText style={{ fontSize: 11, fontWeight: '700', color: '#059669', marginBottom: 4 }}>
+                        Barang Anda ({selectedItems.length})
+                      </AppText>
+                      <AppText style={{ fontSize: 13, fontWeight: '800', color: '#059669', marginBottom: 6 }}>
+                        {formatRp(myTotalPrice)}
+                      </AppText>
                       <View style={{ width: '100%', height: 8, backgroundColor: '#f1f5f9', borderRadius: 4 }}>
-                        <View style={{ height: 8, borderRadius: 4, backgroundColor: '#059669', width: `${(myPrice / maxPrice) * 100}%` }} />
+                        <View style={{ height: 8, borderRadius: 4, backgroundColor: '#059669', width: `${(myTotalPrice / maxPrice) * 100}%` }} />
                       </View>
                     </View>
                     {/* Divider */}
                     <View style={{ width: 1, backgroundColor: '#e2e8f0', marginVertical: 4 }} />
                     {/* Target item */}
                     <View style={{ flex: 1, alignItems: 'center' }}>
-                      <AppText style={{ fontSize: 11, fontWeight: '700', color: '#2563eb', marginBottom: 4 }}>Barang Target</AppText>
-                      <AppText style={{ fontSize: 13, fontWeight: '800', color: '#2563eb', marginBottom: 6 }}>{formatRp(theirPrice)}</AppText>
+                      <AppText style={{ fontSize: 11, fontWeight: '700', color: '#2563eb', marginBottom: 4 }}>
+                        Barang Target
+                      </AppText>
+                      <AppText style={{ fontSize: 13, fontWeight: '800', color: '#2563eb', marginBottom: 6 }}>
+                        {formatRp(theirPrice)}
+                      </AppText>
                       <View style={{ width: '100%', height: 8, backgroundColor: '#f1f5f9', borderRadius: 4 }}>
                         <View style={{ height: 8, borderRadius: 4, backgroundColor: '#2563eb', width: `${(theirPrice / maxPrice) * 100}%` }} />
                       </View>
@@ -328,25 +364,17 @@ export default function CreateOfferScreen() {
                       </AppText>
                     </View>
                   ) : (
-                    <View style={{
-                      backgroundColor: cashPayer === 'offerer' ? '#fefce8' : '#eff6ff',
+                    <>
+                      <View style={{
+                        backgroundColor: cashPayer === 'offerer' ? '#fefce8' : '#eff6ff',
                       borderRadius: 14, padding: 14, borderWidth: 1,
                       borderColor: cashPayer === 'offerer' ? '#fef08a' : '#bfdbfe',
                     }}>
                       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                          {/* <AppText style={{ fontSize: 16 }}>{cashPayer === 'offerer' ? '💰' : '🤝'}</AppText> */}
                           <AppText style={{ fontSize: 12, fontWeight: '700', color: cashPayer === 'offerer' ? '#854d0e' : '#1e40af', textTransform: 'uppercase', letterSpacing: 0.5 }}>
                             Uang Tambahan (Tukar Tambah)
                           </AppText>
-                        </View>
-                        <View style={{
-                          backgroundColor: cashPayer === 'offerer' ? '#fef08a' : '#dbeafe',
-                          paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8
-                        }}>
-                          {/* <AppText style={{ fontSize: 11, fontWeight: '700', color: cashPayer === 'offerer' ? '#713f12' : '#1e40af' }}>
-                            Selisih Otomatis
-                          </AppText> */}
                         </View>
                       </View>
 
@@ -379,18 +407,86 @@ export default function CreateOfferScreen() {
                         </View>
                         <AppText style={{ fontSize: 11, color: '#64748b', marginTop: 4, lineHeight: 16 }}>
                           {cashPayer === 'offerer'
-                            ? `Barang target bernilai lebih tinggi (${formatRp(theirPrice)} vs ${formatRp(myPrice)}). Anda menanggung selisih senilai ${formatRp(autoCalcDiff)}.`
-                            : `Barang Anda bernilai lebih tinggi (${formatRp(myPrice)} vs ${formatRp(theirPrice)}). Pemilik barang target akan menanggung selisih senilai ${formatRp(autoCalcDiff)}.`}
+                            ? `Barang target bernilai lebih tinggi (${formatRp(theirPrice)} vs total ${formatRp(myTotalPrice)}). Anda menanggung selisih senilai ${formatRp(autoCalcDiff)}.`
+                            : `Total nilai barang Anda lebih tinggi (${formatRp(myTotalPrice)} vs ${formatRp(theirPrice)}). Pemilik barang target akan menanggung selisih senilai ${formatRp(autoCalcDiff)}.`}
                         </AppText>
                       </View>
                     </View>
+
+                    {/* Payment Method Selector for Price Difference */}
+                    <View style={{ marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#fde68a' }}>
+                      <AppText style={{ fontSize: 12, fontWeight: '700', color: '#78350f', marginBottom: 8 }}>
+                        Metode Pembayaran Selisih:
+                      </AppText>
+
+                      <TouchableOpacity
+                        onPress={() => setPaymentMethod('gateway')}
+                        activeOpacity={0.8}
+                        style={{
+                          backgroundColor: paymentMethod === 'gateway' ? '#ffffff' : '#fffbeb',
+                          borderWidth: paymentMethod === 'gateway' ? 2 : 1,
+                          borderColor: paymentMethod === 'gateway' ? '#059669' : '#fcd34d',
+                          borderRadius: 12,
+                          padding: 10,
+                          marginBottom: 8,
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 10,
+                        }}
+                      >
+                        <View style={{ width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: paymentMethod === 'gateway' ? '#059669' : '#94a3b8', alignItems: 'center', justifyContent: 'center' }}>
+                          {paymentMethod === 'gateway' && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#059669' }} />}
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <AppText style={{ fontSize: 12, fontWeight: '700', color: '#0f172a' }}>
+                              Rekening Bersama (Escrow)
+                            </AppText>
+                            <View style={{ backgroundColor: '#dcfce7', paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6 }}>
+                              <AppText style={{ fontSize: 9, fontWeight: '800', color: '#166534' }}>Rekomendasi</AppText>
+                            </View>
+                          </View>
+                          <AppText style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>
+                            Dana ditahan aman oleh platform dan baru diteruskan setelah serah terima berhasil.
+                          </AppText>
+                        </View>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        onPress={() => setPaymentMethod('cod')}
+                        activeOpacity={0.8}
+                        style={{
+                          backgroundColor: paymentMethod === 'cod' ? '#ffffff' : '#fffbeb',
+                          borderWidth: paymentMethod === 'cod' ? 2 : 1,
+                          borderColor: paymentMethod === 'cod' ? '#059669' : '#fcd34d',
+                          borderRadius: 12,
+                          padding: 10,
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 10,
+                        }}
+                      >
+                        <View style={{ width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: paymentMethod === 'cod' ? '#059669' : '#94a3b8', alignItems: 'center', justifyContent: 'center' }}>
+                          {paymentMethod === 'cod' && <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#059669' }} />}
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <AppText style={{ fontSize: 12, fontWeight: '700', color: '#0f172a' }}>
+                            COD (Tunai saat tatap muka)
+                          </AppText>
+                          <AppText style={{ fontSize: 10, color: '#64748b', marginTop: 2 }}>
+                            Pembayaran tunai langsung saat bertemu fisik dengan pemilik barang.
+                          </AppText>
+                        </View>
+                      </TouchableOpacity>
+                    </View>
+                    </>
                   )}
                 </>
               ) : (
                 <View style={{ backgroundColor: '#f8fafc', borderRadius: 12, padding: 14, alignItems: 'center', borderWidth: 1, borderColor: '#e2e8f0' }}>
                   <Icon name="information-circle-outline" size={24} color="#94a3b8" />
                   <AppText style={{ fontSize: 12, color: '#64748b', textAlign: 'center', marginTop: 6, lineHeight: 18 }}>
-                    Salah satu atau kedua barang belum memiliki estimasi harga.{'\n'}Transaksi diajukan sebagai barter langsung tanpa uang tambahan.
+                    Ada barang yang belum memiliki estimasi harga.{'\n'}Transaksi diajukan sebagai barter langsung tanpa uang tambahan.
                   </AppText>
                 </View>
               )}
@@ -399,28 +495,87 @@ export default function CreateOfferScreen() {
         )}
 
         {/* ── Step 4: Transaction Summary ──────────────────────── */}
-        {selectedItem && (
+        {selectedItems.length > 0 && (
           <View style={{ backgroundColor: '#f8fafc', borderRadius: 20, borderWidth: 1, borderColor: '#e2e8f0', padding: 16, marginBottom: 24 }}>
             <AppText style={{ textAlign: 'center', fontSize: 11, fontWeight: '700', color: '#64748b', marginBottom: 14, textTransform: 'uppercase', letterSpacing: 0.5 }}>
               Ringkasan Proposal Barter
             </AppText>
 
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              {/* My item thumbnail */}
+              {/* My items thumbnail */}
               <View style={{ flex: 1, alignItems: 'center' }}>
-                <View style={{ width: 60, height: 60, borderRadius: 12, overflow: 'hidden', backgroundColor: '#e2e8f0', marginBottom: 6 }}>
-                  {selectedItem.primary_image || selectedItem.images?.[0] ? (
-                    <Image source={{ uri: selectedItem.primary_image || selectedItem.images[0] }} style={{ width: 60, height: 60 }} resizeMode="cover" />
-                  ) : (
-                    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-                      <AppText style={{ fontSize: 24 }}>📦</AppText>
+                {selectedItems.length === 1 ? (
+                  <>
+                    <View style={{ width: 60, height: 60, borderRadius: 12, overflow: 'hidden', backgroundColor: '#e2e8f0', marginBottom: 6 }}>
+                      {selectedItems[0].primary_image || selectedItems[0].images?.[0] ? (
+                        <Image source={{ uri: selectedItems[0].primary_image || selectedItems[0].images[0] }} style={{ width: 60, height: 60 }} resizeMode="cover" />
+                      ) : (
+                        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                          <AppText style={{ fontSize: 24 }}>📦</AppText>
+                        </View>
+                      )}
                     </View>
-                  )}
-                </View>
-                <AppText style={{ fontSize: 11, fontWeight: '700', color: '#059669', textAlign: 'center' }} numberOfLines={2}>{selectedItem.title}</AppText>
-                <AppText style={{ fontSize: 11, color: myPrice ? '#059669' : '#94a3b8', marginTop: 2 }}>
-                  {myPrice ? formatRp(myPrice) : 'Nilai Fleksibel'}
-                </AppText>
+                    <AppText style={{ fontSize: 11, fontWeight: '700', color: '#059669', textAlign: 'center' }} numberOfLines={2}>
+                      {selectedItems[0].title}
+                    </AppText>
+                    <AppText style={{ fontSize: 11, color: myTotalPrice ? '#059669' : '#94a3b8', marginTop: 2 }}>
+                      {myTotalPrice ? formatRp(myTotalPrice) : 'Nilai Fleksibel'}
+                    </AppText>
+                  </>
+                ) : (
+                  <>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: 6, height: 60 }}>
+                      {selectedItems.slice(0, 3).map((item, idx) => (
+                        <View
+                          key={item.id}
+                          style={{
+                            width: 44,
+                            height: 44,
+                            borderRadius: 10,
+                            overflow: 'hidden',
+                            backgroundColor: '#e2e8f0',
+                            borderWidth: 2,
+                            borderColor: '#ffffff',
+                            marginLeft: idx === 0 ? 0 : -14,
+                            zIndex: 10 - idx,
+                          }}
+                        >
+                          {item.primary_image || item.images?.[0] ? (
+                            <Image source={{ uri: item.primary_image || item.images[0] }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                          ) : (
+                            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                              <AppText style={{ fontSize: 16 }}>📦</AppText>
+                            </View>
+                          )}
+                        </View>
+                      ))}
+                      {selectedItems.length > 3 && (
+                        <View
+                          style={{
+                            width: 28,
+                            height: 28,
+                            borderRadius: 14,
+                            backgroundColor: '#059669',
+                            marginLeft: -8,
+                            zIndex: 20,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          <AppText style={{ fontSize: 10, fontWeight: 'bold', color: '#fff' }}>
+                            +{selectedItems.length - 3}
+                          </AppText>
+                        </View>
+                      )}
+                    </View>
+                    <AppText style={{ fontSize: 11, fontWeight: '700', color: '#059669', textAlign: 'center' }} numberOfLines={2}>
+                      {selectedItems.length} Barang Barter
+                    </AppText>
+                    <AppText style={{ fontSize: 11, color: myTotalPrice ? '#059669' : '#94a3b8', marginTop: 2 }}>
+                      {myTotalPrice ? `Total ${formatRp(myTotalPrice)}` : 'Nilai Fleksibel'}
+                    </AppText>
+                  </>
+                )}
               </View>
 
               {/* Center: arrow + cash badge */}
@@ -462,11 +617,11 @@ export default function CreateOfferScreen() {
       {/* Floating Bottom Action Bar */}
       <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: 'rgba(255,255,255,0.97)', borderTopWidth: 1, borderTopColor: '#e2e8f0', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 24 }}>
         <Button
-          title="Kirim Tawaran Barter Sekarang"
+          title={selectedItemIds.length > 1 ? `Kirim Tawaran (${selectedItemIds.length} Barang)` : "Kirim Tawaran Barter Sekarang"}
           variant="primary"
           size="lg"
           loading={submitting}
-          disabled={!selectedItemId || myItems.length === 0}
+          disabled={selectedItemIds.length === 0 || myItems.length === 0}
           onPress={handleSubmit}
         />
       </View>

@@ -11,6 +11,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { MainTemplate } from '@/components/templates';
 import { AppText, Button, Input, Icon } from '@/components/atoms';
+import { RegionPicker, RegionValue } from '@/components/molecules';
 import { useAuth } from '@/context/AuthContext';
 import { itemService, BarterItem } from '@/services/itemService';
 import { categoryService, Category } from '@/services/categoryService';
@@ -41,7 +42,14 @@ export default function EditItemScreen() {
   const [condition, setCondition] = useState('bekas_baik');
   const [desiredItems, setDesiredItems] = useState('');
   const [estimatedPrice, setEstimatedPrice] = useState('');
-  const [city, setCity] = useState('');
+  const [region, setRegion] = useState<RegionValue>({
+    provinceId: null,
+    provinceName: null,
+    regencyId: null,
+    regencyName: null,
+    districtId: null,
+    districtName: null,
+  });
   const [location, setLocation] = useState('');
   const [status, setStatus] = useState<'active' | 'inactive'>('active');
 
@@ -69,7 +77,14 @@ export default function EditItemScreen() {
       setCondition(itemData.condition);
       setDesiredItems(itemData.desired_items || '');
       setEstimatedPrice(itemData.estimated_price ? itemData.estimated_price.toString() : '');
-      setCity(itemData.city || '');
+      setRegion({
+        provinceId: itemData.province_id ?? null,
+        provinceName: itemData.province_name ?? null,
+        regencyId: itemData.regency_id ?? null,
+        regencyName: itemData.regency_name ?? itemData.city ?? null,
+        districtId: itemData.district_id ?? null,
+        districtName: itemData.district_name ?? null,
+      });
       setLocation(itemData.location || '');
       setStatus(itemData.status === 'inactive' ? 'inactive' : 'active');
       setSelectedCategory(itemData.category?.id ?? null);
@@ -135,7 +150,12 @@ export default function EditItemScreen() {
           condition,
           desired_items: desiredItems.trim() || undefined,
           estimated_price: estimatedPrice ? parseFloat(estimatedPrice.replace(/[^0-9]/g, '')) : undefined,
-          city: city.trim() || undefined,
+          province_id: region.provinceId ?? undefined,
+          province_name: region.provinceName ?? undefined,
+          regency_id: region.regencyId ?? undefined,
+          regency_name: region.regencyName ?? undefined,
+          district_id: region.districtId ?? undefined,
+          district_name: region.districtName ?? undefined,
           location: location.trim() || undefined,
           status,
         },
@@ -389,13 +409,18 @@ export default function EditItemScreen() {
           />
         </View>
 
-        {/* Kota */}
+        {/* Wilayah */}
         <View className="mb-4">
-          <Input
-            label="Kota "
-            placeholder="Contoh: Jakarta Selatan"
-            value={city}
-            onChangeText={setCity}
+          <RegionPicker
+            label="Wilayah Lokasi Barang (COD) *"
+            provinceId={region.provinceId}
+            provinceName={region.provinceName}
+            regencyId={region.regencyId}
+            regencyName={region.regencyName}
+            districtId={region.districtId}
+            districtName={region.districtName}
+            onChange={setRegion}
+            showDistrict={true}
           />
         </View>
 
@@ -403,7 +428,7 @@ export default function EditItemScreen() {
         <View className="mb-6">
           <Input
             label="Lokasi Detail (Opsional)"
-            placeholder="Contoh: Kebayoran Baru, Jakarta Selatan"
+            placeholder="Contoh: Dekat Stasiun, Mall, atau Area Kampus"
             value={location}
             onChangeText={setLocation}
           />

@@ -66,7 +66,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({
           <Image source={{ uri: imageUrl }} className="w-full h-full" resizeMode="cover" />
         ) : (
           <View className="flex-1 items-center justify-center p-2">
-            <AppText className="text-3xl mb-1">📦</AppText>
+            {/* <AppText className="text-3xl mb-1">📦</AppText> */}
             <AppText variant="caption" className="text-slate-400 text-xs">
               Tanpa Foto
             </AppText>
