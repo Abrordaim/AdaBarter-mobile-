@@ -6,11 +6,12 @@ import { AppText, Button, Badge } from '@/components/atoms';
 import { useAuth } from '@/context/AuthContext';
 import { itemService, BarterItem } from '@/services/itemService';
 import { monetizationService, BoostPackage } from '@/services/monetizationService';
+import { MidtransPaymentWebView, PaymentStatus } from '@/components/organisms/MidtransPaymentWebView';
 
 export default function BoostItemScreen() {
   const { item_id } = useLocalSearchParams<{ item_id: string }>();
   const router = useRouter();
-  const { isAuthenticated } = useAuth();
+  const { user, isAuthenticated, refreshUser } = useAuth();
 
   const [packages, setPackages] = useState<BoostPackage[]>([]);
   const [selectedPackageId, setSelectedPackageId] = useState<number | null>(null);
@@ -19,6 +20,12 @@ export default function BoostItemScreen() {
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [usingQuota, setUsingQuota] = useState(false);
+
+  // Midtrans WebView state
+  const [webViewVisible, setWebViewVisible] = useState(false);
+  const [snapUrl, setSnapUrl] = useState<string | null>(null);
+  const [paymentAmount, setPaymentAmount] = useState<number>(0);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -42,7 +49,7 @@ export default function BoostItemScreen() {
         setSelectedPackageId(preferred.id);
       }
       const activeItems = items.filter((it) => it.status === 'active');
-      setMyItems(activeItems);
+      setMyItems(activeItems); 
 
       if (item_id) {
         setSelectedItemId(parseInt(item_id, 10));
@@ -65,20 +72,48 @@ export default function BoostItemScreen() {
     const pkg = packages.find((p) => p.id === selectedPackageId);
     if (!pkg) return;
 
+    setSubmitting(true);
+    try {
+      const result = await monetizationService.payBoost(selectedItemId, pkg.id);
+      if (result.redirect_url) {
+        setSnapUrl(result.redirect_url);
+        setPaymentAmount(result.gross_amount || pkg.price);
+        setWebViewVisible(true);
+      } else {
+        Alert.alert('Gagal Memulai Pembayaran', 'Tidak dapat membuka halaman pembayaran Midtrans.');
+      }
+    } catch (e: any) {
+      Alert.alert('Gagal Memulai Pembayaran', e.message || 'Terjadi kesalahan sistem.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleBoostWithQuota = async () => {
+    if (!selectedItemId) {
+      Alert.alert('Perhatian', 'Pilih salah satu barang milik Anda untuk di-boost.');
+      return;
+    }
+
+    const selectedItem = myItems.find((it) => it.id === selectedItemId);
+    const itemTitle = selectedItem?.title || 'barang ini';
+
     Alert.alert(
-      'Konfirmasi Iklan Sorotan (Boost) ⚡',
-      `Anda akan mem-boost barang ini selama ${pkg.days} hari seharga ${pkg.formatted_price}. Barang akan diutamakan di posisi teratas feed beranda.`,
+      'Gunakan 1 Kuota Boost VIP ⚡',
+      `Anda akan menggunakan 1 kuota boost gratis untuk menyematkan "${itemTitle}" di posisi teratas selama 7 hari. Lanjutkan?`,
       [
         { text: 'Batal', style: 'cancel' },
         {
-          text: 'Konfirmasi Bayar',
+          text: 'Gunakan Kuota',
           onPress: async () => {
-            setSubmitting(true);
+            setUsingQuota(true);
             try {
-              await monetizationService.boostItem(selectedItemId, pkg.id, pkg.days);
+              await monetizationService.boostWithQuota(selectedItemId);
+              await refreshUser();
+              await loadData();
               Alert.alert(
                 'Barang Berhasil Di-Boost! ⚡',
-                `Barang Anda kini telah diprioritaskan di posisi teratas etalase selama ${pkg.days} hari ke depan.`,
+                `Barang "${itemTitle}" berhasil disematkan di posisi teratas etalase selama 7 hari menggunakan Kuota Boost VIP Anda.`,
                 [
                   {
                     text: 'Lihat di Beranda',
@@ -89,14 +124,47 @@ export default function BoostItemScreen() {
             } catch (e: any) {
               Alert.alert('Gagal Memproses Boost', e.message || 'Terjadi kesalahan.');
             } finally {
-              setSubmitting(false);
+              setUsingQuota(false);
             }
           },
         },
       ]
     );
   };
- 
+
+  const handlePaymentFinish = async (status: PaymentStatus) => {
+    setWebViewVisible(false);
+
+    if (status === 'success') {
+      await refreshUser();
+      await loadData();
+      Alert.alert(
+        'Barang Berhasil Di-Boost! ⚡',
+        'Pembayaran berhasil dikonfirmasi. Barang Anda kini telah disematkan di posisi teratas feed beranda.',
+        [
+          {
+            text: 'Lihat di Beranda',
+            onPress: () => router.replace('/(tabs)'),
+          },
+        ]
+      );
+    } else if (status === 'pending') {
+      await refreshUser();
+      Alert.alert(
+        'Pembayaran Sedang Diproses ⏳',
+        'Transaksi Anda sedang menunggu konfirmasi pembayaran. Sorotan iklan barang Anda akan aktif segera setelah pembayaran diverifikasi.',
+        [
+          {
+            text: 'Ke Beranda',
+            onPress: () => router.replace('/(tabs)'),
+          },
+        ]
+      );
+    } else if (status === 'error') {
+      Alert.alert('Pembayaran Gagal', 'Pembayaran tidak berhasil diselesaikan. Silakan coba kembali.');
+    }
+  };
+
   if (loading) {
     return (
       <SafeAreaView className="flex-1 bg-white dark:bg-slate-900 justify-center items-center">
@@ -108,7 +176,7 @@ export default function BoostItemScreen() {
     );
   }
 
-  const selectedItem = myItems.find((it) => it.id === selectedItemId);
+  const userBoostQuota = user?.boost_quota ?? 0;
 
   return (
     <SafeAreaView className="flex-1 bg-slate-50 dark:bg-slate-900" edges={['top']}>
@@ -139,6 +207,36 @@ export default function BoostItemScreen() {
             Dapatkan tawaran barter 3x lebih cepat! Barang yang di-boost akan selalu diprioritaskan di baris pertama feed beranda dengan lencana emas 'Pinned'.
           </AppText>
         </View>
+
+        {/* VIP Free Boost Quota Banner (jika memiliki kuota boost dari VIP) */}
+        {userBoostQuota > 0 && (
+          <View className="bg-emerald-50 dark:bg-emerald-950/40 p-5 rounded-2xl border-2 border-emerald-500 mb-5 shadow-sm">
+            <View className="flex-row items-center justify-between mb-2">
+              <View className="flex-row items-center gap-2">
+                <AppText className="text-lg">👑</AppText>
+                <AppText className="font-bold text-sm text-emerald-900 dark:text-emerald-100">
+                  Kuota Boost VIP Tersedia
+                </AppText>
+              </View>
+              <View className="bg-emerald-600 px-2.5 py-0.5 rounded-full">
+                <AppText className="text-xs font-extrabold text-white">
+                  {userBoostQuota} Slot Gratis
+                </AppText>
+              </View>
+            </View>
+            <AppText variant="caption" className="text-emerald-800 dark:text-emerald-200 text-xs mb-3">
+              Sebagai keuntungan member VIP, Anda dapat langsung menyematkan barang selama 7 hari tanpa biaya tambahan.
+            </AppText>
+            <Button
+              title="Gunakan 1 Kuota Boost VIP Gratis ⚡"
+              variant="primary"
+              size="md"
+              loading={usingQuota}
+              disabled={!selectedItemId || myItems.length === 0}
+              onPress={handleBoostWithQuota}
+            />
+          </View>
+        )}
 
         {/* Section: Select Item to Boost */}
         <AppText variant="caption" className="text-slate-500 font-bold uppercase tracking-wider mb-2 px-1">
@@ -205,7 +303,7 @@ export default function BoostItemScreen() {
 
         {/* Section: Select Boost Package */}
         <AppText variant="caption" className="text-slate-500 font-bold uppercase tracking-wider mb-2 px-1">
-          Pilih Durasi Sorotan
+          Atau Beli Paket Durasi Sorotan
         </AppText>
 
         <View className="gap-3 mb-6">
@@ -244,13 +342,6 @@ export default function BoostItemScreen() {
             );
           })}
         </View>
-
-        {/* Localhost Simulation Note */}
-        <View className="p-3 bg-slate-100 dark:bg-slate-800 rounded-xl mb-4">
-          <AppText variant="caption" className="text-slate-500 text-center text-xs">
-            💡 Lingkungan Demo: Transaksi menggunakan simulasi sistem pembayaran lokal langsung tanpa gateway eksternal.
-          </AppText>
-        </View>
       </ScrollView>
 
       {/* Floating Bottom Action */}
@@ -258,7 +349,7 @@ export default function BoostItemScreen() {
         <Button
           title={
             packages.find((p) => p.id === selectedPackageId)
-              ? `Aktifkan ${packages.find((p) => p.id === selectedPackageId)?.label} ⚡`
+              ? `Bayar ${packages.find((p) => p.id === selectedPackageId)?.label} ⚡`
               : 'Aktifkan Boost ⚡'
           }
           variant="primary"
@@ -269,6 +360,17 @@ export default function BoostItemScreen() {
           onPress={handleBoost}
         />
       </View>
+
+      {/* Midtrans Snap WebView Modal */}
+      {webViewVisible && snapUrl ? (
+        <MidtransPaymentWebView
+          snapUrl={snapUrl}
+          amount={paymentAmount}
+          onPaymentFinish={handlePaymentFinish}
+          onClose={() => setWebViewVisible(false)}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }
+

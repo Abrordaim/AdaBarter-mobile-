@@ -10,14 +10,17 @@ import {
   TextInput,
   RefreshControl,
 } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { AppText, Button, Badge, Avatar, Icon } from '@/components/atoms';
+import { MeetingPointCard } from '@/components/molecules';
 import { RatingModal, MidtransPaymentWebView, PaymentStatus } from '@/components/organisms';
 import { useAuth } from '@/context/AuthContext';
 import { offerService, BarterOffer, EscrowStatus } from '@/services/offerService';
 import { voucherService, VoucherClaimItem } from '@/services/voucherService';
+import { meetingPointService, MeetingPointDetails } from '@/services/meetingPointService';
+import { chatService } from '@/services/chatService';
 
 
 
@@ -84,7 +87,54 @@ export default function OfferDetailScreen() {
   const MAX_POLL_ATTEMPTS = 20; // 20x × 3s = 60 detik max
   const POLL_INTERVAL_MS = 3000;
 
+  // Meeting Point state
+  const [meetingDetails, setMeetingDetails] = useState<MeetingPointDetails | null>(null);
+  const [loadingMeeting, setLoadingMeeting] = useState(false);
+  const [agreeLoading, setAgreeLoading] = useState(false);
 
+  const fetchMeetingDetails = useCallback(async () => {
+    if (!id) return;
+    try {
+      const data = await meetingPointService.getDetails(parseInt(id, 10));
+      setMeetingDetails(data);
+    } catch (e) {
+      console.log('Failed to fetch meeting point details:', e);
+    }
+  }, [id]);
+
+  const handleAgreeMeetingPoint = async (meetingPointId: number) => {
+    if (!offer) return;
+    setAgreeLoading(true);
+    try {
+      await meetingPointService.agree(offer.id, meetingPointId);
+      Alert.alert(
+        'Titik Temu Terkunci! 🔒',
+        'Lokasi dan jadwal pertemuan telah resmi disepakati oleh kedua pihak.'
+      );
+      await fetchMeetingDetails();
+      await fetchOfferDetail(true);
+    } catch (e: any) {
+      Alert.alert('Gagal Menyetujui', e.message || 'Terjadi kesalahan.');
+    } finally {
+      setAgreeLoading(false);
+    }
+  };
+
+  const handleOpenChat = async () => {
+    if (!offer) return;
+    try {
+      const conv = await chatService.getConversationForOffer(offer.id);
+      router.push({
+        pathname: '/chat/direct/[conversationId]',
+        params: { conversationId: conv.id.toString() },
+      });
+    } catch {
+      router.push({
+        pathname: '/chat/[offerId]',
+        params: { offerId: offer.id.toString() },
+      });
+    }
+  };
 
   const fetchOfferDetail = async (isRefresh = false) => {
     if (!id) return;
@@ -94,6 +144,7 @@ export default function OfferDetailScreen() {
     try {
       const data = await offerService.getOfferDetail(parseInt(id, 10));
       setOffer(data);
+      fetchMeetingDetails();
       return data;
     } catch (e: any) {
       Alert.alert('Gagal Memuat', e.message || 'Gagal memuat informasi penawaran barter.', [
@@ -170,6 +221,14 @@ export default function OfferDetailScreen() {
     };
   }, [id, isAuthenticated]);
 
+  useFocusEffect(
+    useCallback(() => {
+      if (id) {
+        fetchMeetingDetails();
+      }
+    }, [id, fetchMeetingDetails])
+  );
+
 
   const handleAccept = async () => {
     if (!offer) return;
@@ -190,11 +249,20 @@ export default function OfferDetailScreen() {
                 [
                   {
                     text: 'Buka Chat Sekarang',
-                    onPress: () =>
-                      router.replace({
-                        pathname: '/chat/[offerId]',
-                        params: { offerId: offer.id.toString() },
-                      }),
+                    onPress: async () => {
+                      try {
+                        const conv = await chatService.getConversationForOffer(offer.id);
+                        router.replace({
+                          pathname: '/chat/direct/[conversationId]',
+                          params: { conversationId: conv.id.toString() },
+                        });
+                      } catch {
+                        router.replace({
+                          pathname: '/chat/[offerId]',
+                          params: { offerId: offer.id.toString() },
+                        });
+                      }
+                    },
                   },
                   {
                     text: 'Nanti Saja',
@@ -235,19 +303,22 @@ export default function OfferDetailScreen() {
 
   const handleCancelOffer = async () => {
     if (!offer) return;
+    const isMatched = offer.status === 'matched';
     Alert.alert(
-      'Batalkan Tawaran?',
-      'Apakah Anda yakin ingin membatalkan pengajuan barter ini?',
+      isMatched ? 'Batalkan Transaksi Barter? ' : 'Batalkan Tawaran?',
+      isMatched
+        ? 'Dana selisih belum dibayarkan. Apakah Anda yakin ingin membatalkan kesepakatan barter ini? Transaksi akan dibatalkan secara permanen.'
+        : 'Apakah Anda yakin ingin membatalkan pengajuan barter ini?',
       [
-        { text: 'Tidak', style: 'cancel' },
+        { text: 'Kembali', style: 'cancel' },
         {
-          text: 'Ya, Batalkan',
+          text: 'Batalkan',
           style: 'destructive',
           onPress: async () => {
             setActionLoading(true);
             try {
               await offerService.cancelOffer(offer.id);
-              Alert.alert('Tawaran Dibatalkan', 'Penawaran barter telah dibatalkan.', [
+              Alert.alert('Transaksi Dibatalkan', 'Kesepakatan barter telah resmi dibatalkan.', [
                 { text: 'Kembali', onPress: () => router.back() },
               ]);
             } catch (e: any) {
@@ -260,6 +331,7 @@ export default function OfferDetailScreen() {
       ]
     );
   };
+
 
   // ── ESCROW ACTIONS ──────────────────────────────────────────
 
@@ -433,7 +505,7 @@ export default function OfferDetailScreen() {
     if (offer?.payment_method === 'gateway' && escrowStatus) {
       switch (escrowStatus) {
         case 'WAITING_PAYMENT':
-          return <Badge variant="warning" text="Menunggu Pembayaran Escrow" />;
+          return <Badge variant="warning" text="Menunggu Pembayaran " />;
         case 'HELD':
           return <Badge variant="info" text="Dana Tertahan (Siap Serah Terima)" />;
         case 'WAITING_CONFIRMATION':
@@ -567,12 +639,7 @@ export default function OfferDetailScreen() {
             </View>
             {offer.status === 'matched' && (
               <TouchableOpacity
-                onPress={() =>
-                  router.push({
-                    pathname: '/chat/[offerId]',
-                    params: { offerId: offer.id.toString() },
-                  })
-                }
+                onPress={handleOpenChat}
                 className="bg-emerald-50 dark:bg-emerald-950/40 px-3 py-2 rounded-xl flex-row items-center gap-1.5 border border-emerald-200 dark:border-emerald-800"
               >
                 <Icon name="chatbubble-ellipses-outline" size={16} color="#059669" />
@@ -644,7 +711,7 @@ export default function OfferDetailScreen() {
         </View>
 
         {/* Swap Direction Badge */}
-        <View className="items-center -my-2 z-10">
+        <View className="items-center my-2 z-10">
           <View className="w-10 h-10 rounded-full bg-emerald-600 items-center justify-center shadow-md mb-2 dark:border-slate-800">
             <AppText className="text-white text-lg font-bold">⇅</AppText>
           </View>
@@ -708,6 +775,20 @@ export default function OfferDetailScreen() {
           </View>
         )}
 
+        {/* Meeting Point Card (Lock Titik Temu) */}
+        {(offer.status === 'matched' || offer.status === 'completed') && (
+          <MeetingPointCard
+            offerId={offer.id}
+            offerStatus={offer.status}
+            meetingDetails={meetingDetails}
+            currentUserId={user?.id}
+            loading={loadingMeeting}
+            onAgree={handleAgreeMeetingPoint}
+            agreeLoading={agreeLoading}
+            className="mb-4"
+          />
+        )}
+
         {/* ── ESCROW & FINANCIAL BREAKDOWN CARD ── */}
         {isEscrow && (offer.price_difference ?? 0) > 0 ? (
           <View className="bg-white dark:bg-slate-800 rounded-2xl p-4 border-2 border-emerald-500/40 dark:border-emerald-500/40 mb-4 shadow-sm">
@@ -722,7 +803,7 @@ export default function OfferDetailScreen() {
 
             <View className="bg-emerald-50/70 dark:bg-emerald-950/30 p-3 rounded-xl mb-3 border border-emerald-100 dark:border-emerald-800">
               <View className="flex-row justify-between items-center mb-1">
-                <AppText className="text-base text-slate-600 dark:text-slate-400">Selisih Nilai Barter:</AppText>
+                <AppText className="text-base font-extrabold text-slate-600 dark:text-slate-400">Selisih Nilai Barter:</AppText>
                 <AppText className="text-base font-extrabold text-emerald-700 dark:text-emerald-300">
                   {formatRp(offer.price_difference)}
                 </AppText>
@@ -752,7 +833,7 @@ export default function OfferDetailScreen() {
                       className="flex-row items-center justify-between bg-white dark:bg-slate-800 border border-emerald-200 dark:border-emerald-700 rounded-xl px-3 py-2.5 mb-3"
                     >
                       <View className="flex-row items-center gap-2">
-                        <AppText className="text-base">🎟️</AppText>
+                        <Icon name={'pricetags-outline'} size={20} color={'#059669'}/>
                         {selectedVoucherClaim ? (
                           <View>
                             <AppText className="text-xs font-bold text-emerald-700 dark:text-emerald-400">
@@ -763,7 +844,7 @@ export default function OfferDetailScreen() {
                             </AppText>
                           </View>
                         ) : (
-                          <AppText className="text-xs font-semibold text-slate-600 dark:text-slate-300">
+                          <AppText className=" ml-2 text-xs font-semibold text-slate-600 dark:text-slate-300">
                             Gunakan Voucher Diskon
                           </AppText>
                         )}
@@ -802,7 +883,7 @@ export default function OfferDetailScreen() {
                             <AppText className="text-xs font-bold text-slate-700 dark:text-slate-200">{formatRp(original)}</AppText>
                           </View>
                           <View className="flex-row justify-between mb-1">
-                            <AppText className="text-xs text-emerald-700 dark:text-emerald-400">Diskon Voucher 🎟️</AppText>
+                            <AppText className="text-xs text-emerald-700 dark:text-emerald-400">Diskon Voucher </AppText>
                             <AppText className="text-xs font-bold text-emerald-700 dark:text-emerald-400">-{formatRp(discount)}</AppText>
                           </View>
                           <View className="h-px bg-emerald-200 dark:bg-emerald-700 my-1" />
@@ -821,14 +902,41 @@ export default function OfferDetailScreen() {
                       loading={payLoading}
                       onPress={handlePayEscrow}
                     />
+
+                    {/* Tombol Batalkan Transaksi untuk Pembayar */}
+                    <View className="mt-2.5">
+                      <Button
+                        title="Batalkan Transaksi Barter"
+                        variant="danger-outline"
+                        size="sm"
+                        loading={actionLoading}
+                        onPress={handleCancelOffer}
+                      />
+                    </View>
                   </View>
                 ) : (
-                  <View className="bg-slate-100 dark:bg-slate-700/50 p-3 rounded-xl">
-                    <AppText className="text-xs text-slate-600 dark:text-slate-300 font-medium">
-                      ⏳ Menunggu pihak pembayar menyelesaikan pembayaran selisih via Rekening Bersama.
+                  <View className="bg-slate-100 dark:bg-slate-700/50 p-3.5 rounded-xl">
+                    <View className="flex-row items-center gap-2 mb-1.5">
+                      <Icon name={'hourglass-outline'} size={18} color={'#d97706'} />
+                      <AppText className="text-xs font-bold text-amber-900 dark:text-amber-300">
+                        Menunggu Pembayaran
+                      </AppText>
+                    </View>
+                    <AppText className="text-xs text-slate-600 dark:text-slate-300 mb-3">
+                      Menunggu pihak pembayar menyelesaikan pembayaran selisih via Rekening Bersama.
                     </AppText>
+
+                    {/* Tombol Batalkan Transaksi untuk Penerima */}
+                    <Button
+                      title="Batalkan Transaksi Barter"
+                      variant="danger-outline"
+                      size="sm"
+                      loading={actionLoading}
+                      onPress={handleCancelOffer}
+                    />
                   </View>
                 )}
+
               </View>
             )}
 
@@ -858,7 +966,7 @@ export default function OfferDetailScreen() {
 
                 {/* ── UNTUK PEMBAYAR (PAYER): KARTU KODE SERAH TERIMA INLINE (TANPA MODAL) ── */}
                 {canViewHandoverCode && (
-                  <View className="bg-slate-900 dark:bg-slate-950 p-4 rounded-2xl border border-slate-700 shadow-md">
+                  <View className="mt-2 bg-slate-900 dark:bg-slate-950 p-4 rounded-2xl border border-slate-700 shadow-md">
                     <View className="flex-row items-center justify-between mb-2">
                       <View className="flex-row items-center gap-1.5">
                         <AppText className="text-base">🔑</AppText>
@@ -906,7 +1014,7 @@ export default function OfferDetailScreen() {
 
                 {/* ── UNTUK PENERIMA (RECEIVER): FORM VERIFIKASI KODE INLINE (TANPA MODAL) ── */}
                 {isReceiver && (
-                  <View className="bg-emerald-50/80 dark:bg-emerald-950/40 p-4 rounded-2xl border border-emerald-200 dark:border-emerald-800">
+                  <View className="mt-2 bg-emerald-50/80 dark:bg-emerald-950/40 p-4 rounded-2xl border border-emerald-200 dark:border-emerald-800">
                     <View className="flex-row items-center gap-2 mb-1.5">
                       <AppText className="text-base">📦</AppText>
                       <AppText className="text-xs font-bold text-emerald-900 dark:text-emerald-200">
@@ -1141,12 +1249,7 @@ export default function OfferDetailScreen() {
                 title="Buka Chat Barter"
                 variant="primary"
                 size="md"
-                onPress={() =>
-                  router.push({
-                    pathname: '/chat/[offerId]',
-                    params: { offerId: offer.id.toString() },
-                  })
-                }
+                onPress={handleOpenChat}
               />
             </View>
             {isEscrow && (
@@ -1400,7 +1503,7 @@ export default function OfferDetailScreen() {
             <View className="flex-row items-center justify-between mb-4">
               <View>
                 <AppText className="text-base font-extrabold text-slate-900 dark:text-white">
-                  Pilih Voucher Diskon 🎟️
+                  Pilih Voucher Diskon 
                 </AppText>
                 <AppText className="text-xs text-slate-500 dark:text-slate-400">
                   Hanya voucher yang memenuhi min. transaksi ditampilkan

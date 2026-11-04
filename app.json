@@ -34,6 +34,12 @@
           "imageWidth": 76
         }
       ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "AdaBarter membutuhkan akses lokasi untuk menentukan titik temu dan pelacakan transaksi barter."
+        }
+      ],
       "@react-native-vector-icons/ionicons"
     ],
     "experiments": {

@@ -43,11 +43,7 @@ export default function ProfileScreen() {
 
   // Voucher: navigates to /vouchers screen (no local state needed)
 
-  // Quota purchase modal state
-  const [quotaModalVisible, setQuotaModalVisible] = useState(false);
-  const [purchasingQuota, setPurchasingQuota] = useState(false);
-  const [slotPackages, setSlotPackages] = useState<import('@/services/monetizationService').QuotaPackage[]>([]);
-  const [loadingSlots, setLoadingSlots] = useState(false);
+
 
   const fetchProfile = async () => {
     if (!isAuthenticated) return;
@@ -125,50 +121,7 @@ export default function ProfileScreen() {
 
 
 
-  const openQuotaModal = async () => {
-    setQuotaModalVisible(true);
-    if (slotPackages.length === 0) {
-      setLoadingSlots(true);
-      try {
-        const data = await monetizationService.getPlans();
-        setSlotPackages(data.quota_packages || []);
-      } catch {
-        // keep empty, will show fallback
-      } finally {
-        setLoadingSlots(false);
-      }
-    }
-  };
 
-  const handlePurchaseQuota = async (pkg: import('@/services/monetizationService').QuotaPackage) => {
-    Alert.alert(
-      'Beli Slot Kuota Tambahan',
-      `Beli ${pkg.label} seharga ${pkg.formatted_price}? (Simulasi pembayaran localhost)`,
-      [
-        { text: 'Batal', style: 'cancel' },
-        {
-          text: 'Konfirmasi Bayar',
-          onPress: async () => {
-            setPurchasingQuota(true);
-            try {
-              const res = await monetizationService.purchaseQuota(pkg.id);
-              Alert.alert(
-                'Pembelian Berhasil! 🎉',
-                `Kuota posting Anda bertambah +${pkg.slots} slot. Sisa kuota aktif Anda saat ini: ${res.remaining_quota}.`
-              );
-              setQuotaModalVisible(false);
-              await fetchProfile();
-              await refreshUser();
-            } catch (e: any) {
-              Alert.alert('Gagal Membeli Kuota', e.message || 'Terjadi kesalahan.');
-            } finally {
-              setPurchasingQuota(false);
-            }
-          },
-        },
-      ]
-    );
-  };
 
   const openEditProfile = () => {
     setEditName(user?.name || profile?.name || '');
@@ -180,7 +133,7 @@ export default function ProfileScreen() {
       regencyName: user?.regency_name ?? profile?.regency_name ?? user?.city ?? profile?.city ?? null,
       districtId: user?.district_id ?? profile?.district_id ?? null,
       districtName: user?.district_name ?? profile?.district_name ?? null,
-    });
+    }); 
     setNewAvatarAsset(null);
     setEditProfileVisible(true);
   };
@@ -282,6 +235,7 @@ export default function ProfileScreen() {
   const activeItems = profile?.active_items_count ?? user?.active_items_count ?? 0;
   const remainingQuota = profile?.remaining_quota ?? user?.remaining_quota ?? 0;
   const isVip = profile?.is_vip ?? user?.is_vip ?? false;
+  const boostQuota = profile?.boost_quota ?? user?.boost_quota ?? 0;
   const totalSlots = freeQuota + bonusQuota;
   const usagePercentage = totalSlots > 0 ? Math.min(100, Math.round((activeItems / totalSlots) * 100)) : 0;
 
@@ -420,13 +374,7 @@ export default function ProfileScreen() {
                 onPress={() => router.push('/vouchers')}
                 className="bg-emerald-600 px-2.5 py-1 rounded-full flex-row items-center gap-1 shadow-sm"
               >
-                <AppText className="text-[10px] text-white font-bold">Voucher</AppText>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={openQuotaModal}
-                className="bg-amber-500 px-2.5 py-1 rounded-full flex-row items-center gap-1 shadow-sm"
-              >
-                <AppText className="text-[10px] text-white font-bold">Beli Slot</AppText>
+                <AppText className="text-[10px] text-white font-bold">Klaim Voucher</AppText>
               </TouchableOpacity>
             </View>
           </View>
@@ -458,7 +406,7 @@ export default function ProfileScreen() {
             <View className="h-8 w-px bg-emerald-300 dark:bg-emerald-800" />
             <View className="items-center flex-1">
               <AppText variant="caption" className="text-emerald-700 dark:text-emerald-300">
-                Voucher & Beli
+                Bonus Slot
               </AppText>
               <AppText className="font-bold text-base text-emerald-900 dark:text-white">
                 +{bonusQuota} slot
@@ -474,6 +422,27 @@ export default function ProfileScreen() {
               </AppText>
             </View>
           </View>
+
+          {/* Boost Quota Badge if available */}
+          {boostQuota > 0 && (
+            <TouchableOpacity
+              onPress={() => router.push('/monetization/boost')}
+              className="mt-3 bg-emerald-600/10 dark:bg-emerald-400/10 p-2.5 rounded-xl border border-emerald-500/30 flex-row items-center justify-between"
+            >
+              <View className="flex-row items-center gap-2">
+                <AppText className="text-base">⚡</AppText>
+                <View>
+                  <AppText className="text-xs font-bold text-emerald-900 dark:text-emerald-100">
+                    {boostQuota} Kuota Boost VIP Aktif
+                  </AppText>
+                  <AppText variant="caption" className="text-[10px] text-emerald-700 dark:text-emerald-300">
+                    Sorot barang Anda gratis selama 7 hari
+                  </AppText>
+                </View>
+              </View>
+              <AppText className="text-xs font-bold text-emerald-700 dark:text-emerald-300">Gunakan ›</AppText>
+            </TouchableOpacity>
+          )}
         </View>
 
         {/* Activity Summary Cards */}
@@ -771,70 +740,7 @@ export default function ProfileScreen() {
       </View>
 
 
-      {/* Purchase Quota Modal */}
-      <Modal
-        visible={quotaModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setQuotaModalVisible(false)}
-      >
-        <View className="flex-1 bg-black/50 justify-center items-center px-6">
-          <View className="bg-white dark:bg-slate-800 w-full p-6 rounded-3xl shadow-lg">
-            <View className="items-center mb-4">
-              <View className="w-16 h-16 bg-amber-100 dark:bg-amber-950 rounded-full items-center justify-center mb-2">
-              </View>
-              <AppText variant="h3" className="font-bold text-center text-slate-900 dark:text-white">
-                Beli Slot Kuota Tambahan
-              </AppText>
-              <AppText variant="caption" className="text-center text-slate-500 dark:text-slate-400 mt-1">
-                Perlu menambah barang aktif di etalase? Pilih paket slot posting satuan berikut:
-              </AppText>
-            </View>
 
-            <View className="gap-2.5 mb-5">
-              {loadingSlots ? (
-                <View className="py-6 items-center justify-center">
-                  <ActivityIndicator size="small" color="#059669" />
-                  <AppText variant="caption" className="text-slate-500 mt-2">
-                    Memuat paket slot...
-                  </AppText>
-                </View>
-              ) : slotPackages.length > 0 ? (
-                slotPackages.map((pkg) => (
-                  <TouchableOpacity
-                    key={pkg.id}
-                    onPress={() => handlePurchaseQuota(pkg)}
-                    disabled={purchasingQuota}
-                    className="p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 flex-row items-center justify-between"
-                  >
-                    <View className="flex-row items-center gap-2">
-                      <AppText className="font-bold text-slate-800 dark:text-slate-200">{pkg.label}</AppText>
-                      {pkg.badge ? (
-                        <View className="bg-amber-400 px-1.5 py-0.5 rounded">
-                          <AppText className="text-[10px] font-bold text-slate-900">{pkg.badge}</AppText>
-                        </View>
-                      ) : null}
-                    </View>
-                    <AppText className="font-extrabold text-brand-600">{pkg.formatted_price}</AppText>
-                  </TouchableOpacity>
-                ))
-              ) : (
-                <View className="py-4 items-center">
-                  <AppText variant="caption" className="text-slate-500">
-                    Tidak ada paket slot tersedia saat ini.
-                  </AppText>
-                </View>
-              )}
-            </View>
-
-            <Button
-              title="Tutup"
-              variant="secondary"
-              onPress={() => setQuotaModalVisible(false)}
-            />
-          </View>
-        </View>
-      </Modal>
 
       {/* Edit Profile Modal */}
       <Modal

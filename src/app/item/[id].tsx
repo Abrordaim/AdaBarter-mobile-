@@ -9,6 +9,7 @@ import { itemService, BarterItem } from '@/services/itemService';
 import { reportService } from '@/services/reportService';
 import { bannerService, Banner } from '@/services/bannerService';
 import { BannerCarousel } from '@/components/organisms';
+import { chatService } from '@/services/chatService';
 
 
 export default function ItemDetailScreen() {
@@ -21,6 +22,7 @@ export default function ItemDetailScreen() {
   const [item, setItem] = useState<BarterItem | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [startingChat, setStartingChat] = useState(false);
 
   // Report modal state
   const [reportModalVisible, setReportModalVisible] = useState(false);
@@ -95,6 +97,40 @@ export default function ItemDetailScreen() {
       pathname: '/offer/create',
       params: { target_item_id: item.id.toString() },
     });
+  };
+
+  const handleDirectChatPress = async () => {
+    if (!item) return;
+
+    if (!isAuthenticated) {
+      Alert.alert(
+        'Perlu Masuk Akun',
+        'Anda harus masuk atau mendaftar terlebih dahulu untuk mengirim pesan ke pemilik barang.',
+        [
+          { text: 'Nanti', style: 'cancel' },
+          { text: 'Masuk Sekarang', onPress: () => router.push('/(auth)/login') },
+        ]
+      );
+      return;
+    }
+
+    if (item.user?.id === user?.id) {
+      Alert.alert('Perhatian', 'Ini adalah barang milik Anda sendiri.');
+      return;
+    }
+
+    setStartingChat(true);
+    try {
+      const conv = await chatService.startDirectChat(item.id);
+      router.push({
+        pathname: '/chat/direct/[conversationId]',
+        params: { conversationId: conv.id.toString() },
+      });
+    } catch (e: any) {
+      Alert.alert('Gagal Membuka Chat', e.message || 'Terjadi kesalahan.');
+    } finally {
+      setStartingChat(false);
+    }
   };
 
   const openReportModal = () => {
@@ -447,7 +483,23 @@ export default function ItemDetailScreen() {
             </View>
           </View>
         ) : (
-          <View className="flex-row items-center gap-3">
+          <View className="flex-row items-center gap-2.5">
+            <TouchableOpacity
+              onPress={handleDirectChatPress}
+              disabled={startingChat}
+              className="bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-300 dark:border-emerald-700 px-4 py-3.5 rounded-2xl flex-row items-center justify-center gap-1.5 shadow-sm active:bg-emerald-100 dark:active:bg-emerald-900"
+            >
+              {startingChat ? (
+                <ActivityIndicator size="small" color="#059669" />
+              ) : (
+                <>
+                  <Icon name="chatbubble-ellipses-outline" size={18} color="#059669" />
+                  <AppText className="text-emerald-800 dark:text-emerald-200 font-bold text-sm">
+                    Chat
+                  </AppText>
+                </>
+              )}
+            </TouchableOpacity>
             <View className="flex-1">
               <Button
                 title="Ajukan Barter"

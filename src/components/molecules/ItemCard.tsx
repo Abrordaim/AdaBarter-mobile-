@@ -12,6 +12,7 @@ export interface ItemCardProps {
   isBoosted?: boolean;
   desiredItems?: string | null;
   onPress?: () => void;
+  onChatPress?: () => void;
   className?: string;
 }
 
@@ -25,6 +26,7 @@ export const ItemCard: React.FC<ItemCardProps> = ({
   isBoosted = false,
   desiredItems,
   onPress,
+  onChatPress,
   className = '',
 }) => {
   const getConditionInfo = (cond: string): { variant: 'success' | 'info' | 'neutral' | 'warning'; label: string } => {
@@ -109,13 +111,28 @@ export const ItemCard: React.FC<ItemCardProps> = ({
           </View>
         )}
 
-        <View className="flex-row items-center justify-between  border-t border-slate-100 dark:border-slate-700/50">
-          <AppText variant="caption" numberOfLines={1} className="text-slate-500 dark:text-slate-400 text-xs flex-col" >
-            <Icon name="location-outline" size={16} color="black" />
-            <Text className=''>
+        <View className="flex-row items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-700/50">
+          <View className="flex-row items-center gap-1 flex-1 pr-1">
+            <Icon name="location-outline" size={13} color="#64748b" />
+            <AppText variant="caption" numberOfLines={1} className="text-slate-500 dark:text-slate-400 text-xs">
               {displayLocation}
-            </Text>
-          </AppText>
+            </AppText>
+          </View>
+          {onChatPress && (
+            <TouchableOpacity
+              onPress={(e) => {
+                e.stopPropagation();
+                onChatPress();
+              }}
+              hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+              className="bg-emerald-50 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 px-2 py-0.5 rounded-lg flex-row items-center gap-1 active:bg-emerald-100 dark:active:bg-emerald-900"
+            >
+              <Icon name="chatbubble-ellipses-outline" size={11} color="#059669" />
+              <AppText className="text-[10px] font-bold text-emerald-800 dark:text-emerald-200">
+                Chat
+              </AppText>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     </TouchableOpacity>

@@ -15,6 +15,8 @@ export interface User {
   avatar_url?: string | null;
   role: 'user' | 'admin' | 'super_admin';
   is_vip: boolean;
+  vip_expires_at?: string | null;
+  boost_quota?: number;
   free_post_quota: number;
   bonus_post_quota: number;
   remaining_quota: number;

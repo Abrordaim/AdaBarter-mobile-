@@ -22,6 +22,7 @@ export interface BarterItem {
   is_boosted: boolean;
   images: string[];
   primary_image?: string | null;
+  user_id?: number;
   user?: User;
   category?: Category;
   created_at?: string; 

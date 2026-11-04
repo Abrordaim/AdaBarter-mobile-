@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppText, Button, Badge } from '@/components/atoms';
 import { useAuth } from '@/context/AuthContext';
 import { monetizationService, SubscriptionPlan } from '@/services/monetizationService';
+import { MidtransPaymentWebView, PaymentStatus } from '@/components/organisms/MidtransPaymentWebView';
 
 export default function VipSubscriptionScreen() {
   const router = useRouter();
@@ -14,6 +15,11 @@ export default function VipSubscriptionScreen() {
   const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+
+  // Midtrans WebView state
+  const [webViewVisible, setWebViewVisible] = useState(false);
+  const [snapUrl, setSnapUrl] = useState<string | null>(null);
+  const [paymentAmount, setPaymentAmount] = useState<number>(0);
 
   useEffect(() => {
     if (!isAuthenticated) {
@@ -39,42 +45,58 @@ export default function VipSubscriptionScreen() {
     }
   };
 
-  const handleSubscribe = async () => {
+  const handleSubscribe = async () => { 
     if (selectedPlanId === null) return;
     const plan = plans.find((p) => p.id === selectedPlanId);
     if (!plan) return;
 
-    Alert.alert(
-      'Konfirmasi Langganan VIP 👑',
-      `Anda akan mengaktifkan paket ${plan.name} seharga ${plan.formatted_price}. Karena aplikasi berjalan di lingkungan localhost, pembayaran akan langsung disimulasikan berhasil (QRIS/VA).`,
-      [
-        { text: 'Batal', style: 'cancel' },
-        {
-          text: 'Konfirmasi Bayar',
-          onPress: async () => {
-            setSubmitting(true);
-            try {
-              await monetizationService.subscribe(plan.id);
-              await refreshUser();
-              Alert.alert(
-                'Selamat! Akun Anda Telah VIP! 👑',
-                'Anda sekarang memiliki akses posting barang tanpa batas dan lencana VIP eksklusif di profil serta katalog barter.',
-                [
-                  {
-                    text: 'Mulai Barter',
-                    onPress: () => router.replace('/(tabs)/profile'),
-                  },
-                ]
-              );
-            } catch (e: any) {
-              Alert.alert('Gagal Berlangganan', e.message || 'Terjadi kesalahan.');
-            } finally {
-              setSubmitting(false);
-            }
+    setSubmitting(true);
+    try {
+      const result = await monetizationService.payVip(plan.id);
+      if (result.redirect_url) {
+        setSnapUrl(result.redirect_url);
+        setPaymentAmount(result.gross_amount || plan.price);
+        setWebViewVisible(true);
+      } else {
+        Alert.alert('Gagal Memulai Pembayaran', 'Tidak dapat membuka halaman pembayaran Midtrans.');
+      }
+    } catch (e: any) {
+      Alert.alert('Gagal Memulai Pembayaran', e.message || 'Terjadi kesalahan sistem.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handlePaymentFinish = async (status: PaymentStatus) => {
+    setWebViewVisible(false);
+
+    if (status === 'success') {
+      await refreshUser();
+      Alert.alert(
+        'Selamat! Akun Anda Telah VIP! 👑',
+        'Pembayaran berhasil dikonfirmasi. Anda sekarang menikmati status VIP, kuota posting tambahan, dan kuota boost listing gratis.',
+        [
+          {
+            text: 'Lihat Profil',
+            onPress: () => router.replace('/(tabs)/profile'),
           },
-        },
-      ]
-    );
+        ]
+      );
+    } else if (status === 'pending') {
+      await refreshUser();
+      Alert.alert(
+        'Pembayaran Sedang Diproses ⏳',
+        'Transaksi Anda sedang menunggu konfirmasi pembayaran. Status VIP Anda akan otomatis aktif begitu pembayaran selesai diverifikasi.',
+        [
+          {
+            text: 'Ke Profil',
+            onPress: () => router.replace('/(tabs)/profile'),
+          },
+        ]
+      );
+    } else if (status === 'error') {
+      Alert.alert('Pembayaran Gagal', 'Pembayaran tidak berhasil diselesaikan. Silakan coba kembali.');
+    }
   };
 
   if (loading) {
@@ -167,10 +189,10 @@ export default function VipSubscriptionScreen() {
               </View>
               <View className="flex-1">
                 <AppText className="font-bold text-sm text-slate-900 dark:text-white">
-                  Prioritas Pencarian & Rekomendasi
+                  Bonus Kuota Slot & Kuota Boost
                 </AppText>
                 <AppText variant="caption" className="text-slate-500 text-xs">
-                  Barang Anda tampil lebih sering di feed beranda dan rekomendasi barter.
+                  Mendapatkan tambahan slot posting serta kuota iklan sorotan (boost) untuk barang favorit Anda.
                 </AppText>
               </View>
             </View>
@@ -218,8 +240,24 @@ export default function VipSubscriptionScreen() {
                 </View>
 
                 {/* Features Checklist */}
-                <View className="pt-2 border-t border-slate-100 dark:border-slate-700/60 gap-1">
-                  {plan.features.map((feat, idx) => (
+                <View className="pt-2 border-t border-slate-100 dark:border-slate-700/60 gap-1.5">
+                  {plan.bonus_post_quota > 0 && (
+                    <View className="flex-row items-center gap-1.5">
+                      <AppText className="text-brand-600 text-xs">✓</AppText>
+                      <AppText variant="caption" className="text-slate-700 dark:text-slate-200 text-xs font-semibold">
+                        +{plan.bonus_post_quota} Kuota Tambahan Slot Posting
+                      </AppText>
+                    </View>
+                  )}
+                  {plan.bonus_boost_quota > 0 && (
+                    <View className="flex-row items-center gap-1.5">
+                      <AppText className="text-amber-500 text-xs">⚡</AppText>
+                      <AppText variant="caption" className="text-amber-800 dark:text-amber-300 text-xs font-semibold">
+                        +{plan.bonus_boost_quota} Kuota Iklan Sorotan (Boost) Listing Gratis
+                      </AppText>
+                    </View>
+                  )}
+                  {plan.features?.map((feat, idx) => (
                     <View key={idx} className="flex-row items-center gap-1.5">
                       <AppText className="text-brand-600 text-xs">✓</AppText>
                       <AppText variant="caption" className="text-slate-600 dark:text-slate-300 text-xs">
@@ -232,25 +270,29 @@ export default function VipSubscriptionScreen() {
             );
           })}
         </View>
-
-        {/* Localhost Payment Note */}
-        <View className="p-3 bg-slate-100 dark:bg-slate-800 rounded-xl mb-4">
-          <AppText variant="caption" className="text-slate-500 text-center text-xs">
-            💡 Lingkungan Demo / Localhost: Transaksi menggunakan simulasi sistem pembayaran lokal langsung tanpa gateway eksternal.
-          </AppText>
-        </View>
       </ScrollView>
 
       {/* Floating Bottom Action */}
       <View className="absolute bottom-0 left-0 right-0 bg-white/95 dark:bg-slate-900/95 border-t border-slate-200 dark:border-slate-800 px-5 py-3 shadow-lg">
         <Button
-          title={isAlreadyVip ? "Perpanjang Masa Aktif VIP 👑" : "Aktifkan Langganan VIP Sekarang 👑"}
+          title={isAlreadyVip ? "Perpanjang Masa Aktif VIP 👑" : "Bayar Langganan VIP Sekarang 👑"}
           variant="primary"
           size="lg"
           loading={submitting}
           onPress={handleSubscribe}
         />
       </View>
+
+      {/* Midtrans Snap WebView Modal */}
+      {webViewVisible && snapUrl ? (
+        <MidtransPaymentWebView
+          snapUrl={snapUrl}
+          amount={paymentAmount}
+          onPaymentFinish={handlePaymentFinish}
+          onClose={() => setWebViewVisible(false)}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }
+

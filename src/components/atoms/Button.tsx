@@ -3,7 +3,7 @@ import { TouchableOpacity, ActivityIndicator, TouchableOpacityProps, View } from
 import { AppText } from './AppText';
 
 export interface ButtonProps extends TouchableOpacityProps {
-  variant?: 'primary' | 'secondary' | 'ghost';
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'danger-outline';
   size?: 'sm' | 'md' | 'lg';
   loading?: boolean;
   disabled?: boolean;
@@ -35,6 +35,8 @@ export const Button: React.FC<ButtonProps> = ({
     if (variant === 'primary') styles += 'bg-brand-600 ';
     else if (variant === 'secondary') styles += 'bg-transparent border border-brand-600 ';
     else if (variant === 'ghost') styles += 'bg-transparent ';
+    else if (variant === 'danger') styles += 'bg-red-600 ';
+    else if (variant === 'danger-outline') styles += 'bg-red-50 dark:bg-red-950/40 border border-red-300 dark:border-red-800 ';
 
     // Disabled
     if (disabled || loading) styles += 'opacity-50 ';
@@ -43,7 +45,8 @@ export const Button: React.FC<ButtonProps> = ({
   };
 
   const getTextStyles = () => {
-    if (variant === 'primary') return 'text-white font-medium';
+    if (variant === 'primary' || variant === 'danger') return 'text-white font-medium';
+    if (variant === 'danger-outline') return 'text-red-600 dark:text-red-400 font-semibold';
     return 'text-brand-600 font-medium';
   };
 
@@ -54,7 +57,7 @@ export const Button: React.FC<ButtonProps> = ({
       {...props}
     >
       {loading ? (
-        <ActivityIndicator color={variant === 'primary' ? 'white' : '#059669'} />
+        <ActivityIndicator color={variant === 'primary' || variant === 'danger' ? 'white' : variant === 'danger-outline' ? '#dc2626' : '#059669'} />
       ) : (
         <View className="flex-row items-center justify-center gap-2">
           {leftIcon}
@@ -65,3 +68,4 @@ export const Button: React.FC<ButtonProps> = ({
     </TouchableOpacity>
   );
 };
+

@@ -135,6 +135,7 @@ export default function HomeScreen() {
     setSearchQuery('');
   };
 
+  
 
   return (
     <MainTemplate
@@ -280,6 +281,7 @@ export default function HomeScreen() {
                     params: { id: item.id.toString() },
                   });
                 }}
+                
               />
             </View>
           ))}
