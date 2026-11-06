@@ -220,7 +220,7 @@ export default function DirectChatRoomScreen() {
               </View>
             ) : (
               <AppText className="text-[11px] text-slate-400 dark:text-slate-400" numberOfLines={1}>
-                {otherUser?.city || 'Pengguna AdaBarter'}
+                
               </AppText>
             )}
           </View>
@@ -404,7 +404,7 @@ export default function DirectChatRoomScreen() {
                 }
                 className="bg-emerald-600 px-2.5 py-1 rounded-lg"
               >
-                <AppText className="text-[11px] font-bold text-white">Atur Titik Temu</AppText>
+                <AppText className="text-xs  font-bold text-white">Atur Titik Temu</AppText>
               </TouchableOpacity>
             </View>
           )}
@@ -423,9 +423,8 @@ export default function DirectChatRoomScreen() {
             className="bg-slate-50 dark:bg-slate-800/80 px-4 py-2 border-b border-slate-200 dark:border-slate-700 flex-row items-center justify-between"
           >
             <View className="flex-row items-center gap-2 flex-1">
-              <Icon name="chatbubble-ellipses-outline" size={14} color="#059669" />
               <AppText className="text-xs text-slate-700 dark:text-slate-300 font-medium" numberOfLines={1}>
-                Menanyakan: <AppText className="font-bold text-emerald-700 dark:text-emerald-300">{item.title}</AppText>
+                <AppText className="font-bold text-emerald-700 dark:text-emerald-300">{item.title}</AppText>
               </AppText>
             </View>
             <AppText className="text-[11px] text-brand-600 font-bold ml-2">Lihat Barang ›</AppText>
@@ -485,30 +484,27 @@ export default function DirectChatRoomScreen() {
                 )}
 
                 <View
-                  className={`max-w-[78%] px-4 py-2.5 rounded-2xl shadow-sm ${
-                    isMe
+                  className={`max-w-[78%] px-4 py-2.5 rounded-2xl shadow-sm ${isMe
                       ? 'bg-brand-600 rounded-br-xs'
                       : 'bg-white dark:bg-slate-800 rounded-bl-xs border border-slate-200 dark:border-slate-700'
-                  }`}
+                    }`}
                 >
                   <AppText
-                    className={`text-sm leading-5 ${
-                      isMe ? 'text-white' : 'text-slate-900 dark:text-slate-100'
-                    }`}
+                    className={`text-sm leading-5 ${isMe ? 'text-white' : 'text-slate-900 dark:text-slate-100'
+                      }`}
                   >
                     {msg.message}
                   </AppText>
                   <View className="flex-row justify-end items-center gap-1 mt-1">
                     <AppText
-                      className={`text-xs ${
-                        isMe ? 'text-emerald-100' : 'text-slate-400'
-                      }`}
+                      className={`text-xs ${isMe ? 'text-emerald-100' : 'text-slate-400'
+                        }`}
                     >
                       {msg.created_at
                         ? new Date(msg.created_at).toLocaleTimeString('id-ID', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })
                         : ''}
                     </AppText>
                     {isMe && (
@@ -549,9 +545,8 @@ export default function DirectChatRoomScreen() {
             <TouchableOpacity
               onPress={handleSendMessage}
               disabled={!inputText.trim() || sending}
-              className={`w-11 h-11 rounded-full items-center justify-center ${
-                inputText.trim() && !sending ? 'bg-brand-600' : 'bg-slate-300 dark:bg-slate-700'
-              }`}
+              className={`w-11 h-11 rounded-full items-center justify-center ${inputText.trim() && !sending ? 'bg-brand-600' : 'bg-slate-300 dark:bg-slate-700'
+                }`}
             >
               {sending ? (
                 <ActivityIndicator size="small" color="#ffffff" />
@@ -571,11 +566,11 @@ export default function DirectChatRoomScreen() {
           targetUser={
             otherUser
               ? {
-                  id: otherUser.id,
-                  name: otherUser.name,
-                  avatar_url: otherUser.avatar_url,
-                  city: otherUser.city,
-                }
+                id: otherUser.id,
+                name: otherUser.name,
+                avatar_url: otherUser.avatar_url,
+                city: otherUser.city,
+              }
               : null
           }
           onClose={() => setRatingModalVisible(false)}

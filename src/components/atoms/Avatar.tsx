@@ -25,8 +25,8 @@ export const Avatar: React.FC<AvatarProps> = ({
   const displayInitials = initials || (name ? name.substring(0, 2).toUpperCase() : undefined);
   const getSizeStyles = () => {
     if (size === 'sm') return 'w-8 h-8 rounded-full';
-    if (size === 'lg') return 'w-16 h-16 rounded-2xl';
-    return 'w-12 h-12 rounded-xl'; // md
+    if (size === 'lg') return 'w-16 h-16 rounded-full';
+    return 'w-12 h-12 rounded-full'; // md
   };
 
   const getOnlineIndicatorStyles = () => {

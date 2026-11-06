@@ -947,17 +947,17 @@ export default function OfferDetailScreen() {
                 <View className="bg-emerald-50 dark:bg-emerald-950/40 p-3.5 rounded-xl border border-emerald-200 dark:border-emerald-800">
                   <View className="flex-row items-center gap-2 mb-1">
                     <Icon name="shield-checkmark" size={18} color="#059669" />
-                    <AppText className="text-xs font-bold text-emerald-900 dark:text-emerald-200">
+                    <AppText className="text-sm font-bold text-emerald-900 dark:text-emerald-200">
                       Dana Selisih Aman Tertahan di Rekening Bersama
                     </AppText>
                   </View>
-                  <AppText className="text-[11px] text-emerald-800 dark:text-emerald-300">
+                  <AppText className="text-xs text-emerald-800 dark:text-emerald-300">
                     Dana selisih Rp {Number(offer.price_difference).toLocaleString('id-ID')} telah dibayar dan diamankan oleh platform. Silakan kedua pihak bertemu langsung untuk serah terima fisik barang.
                   </AppText>
                   {offer.confirm_deadline_at && (
                     <View className="mt-2 pt-2 border-t border-emerald-200/60 dark:border-emerald-800/60 flex-row items-center gap-1">
                       <Icon name="time-outline" size={13} color="#059669" />
-                      <AppText className="text-[10px] text-emerald-700 dark:text-emerald-300">
+                      <AppText className="text-xs text-emerald-700 dark:text-emerald-300">
                         Batas konfirmasi otomatis: {new Date(offer.confirm_deadline_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                       </AppText>
                     </View>
@@ -966,21 +966,22 @@ export default function OfferDetailScreen() {
 
                 {/* ── UNTUK PEMBAYAR (PAYER): KARTU KODE SERAH TERIMA INLINE (TANPA MODAL) ── */}
                 {canViewHandoverCode && (
-                  <View className="mt-2 bg-slate-900 dark:bg-slate-950 p-4 rounded-2xl border border-slate-700 shadow-md">
+                  <View className="mt-2 bg-emerald-100 p-4 rounded-2xl border border-emerald-700 shadow-md">
                     <View className="flex-row items-center justify-between mb-2">
                       <View className="flex-row items-center gap-1.5">
-                        <AppText className="text-base">🔑</AppText>
+                        {/* <AppText className="text-base">🔑</AppText> */}
+                        <Icon name={'key-outline'}/>
                         <AppText className="text-emerald-400 text-xs font-bold uppercase tracking-wider">
                           Kode Serah Terima Anda
                         </AppText>
                       </View>
                       <View className="bg-emerald-950/90 px-2 py-0.5 rounded border border-emerald-500/40">
-                        <AppText className="text-[10px] font-bold text-emerald-300">RAHASIA</AppText>
+                        <AppText className="text-xs font-bold text-slate-100">RAHASIA</AppText>
                       </View>
                     </View>
 
                     {offer.handover_code ? (
-                      <View className="bg-slate-800/90 rounded-xl py-3 px-4 my-2 items-center justify-center border border-slate-700">
+                      <View className="bg-emerald-800/90 rounded-xl py-3 px-4 my-2 items-center justify-center border border-emerald-700">
                         <AppText
                           selectable
                           className="text-white text-3xl font-mono font-black tracking-[8px]"
@@ -997,8 +998,8 @@ export default function OfferDetailScreen() {
                       </View>
                     )}
 
-                    <AppText className="text-slate-300 text-[11px] text-center mt-1 leading-4">
-                      Tunjukkan / berikan kode 6 digit ini kepada lawan barter <AppText className="font-bold text-white">{otherUser?.name || 'lawan barter'}</AppText> HANYA setelah Anda bertemu langsung dan menerima barang barter dalam kondisi sesuai.
+                    <AppText className="text-slate-300 text-xs text-center mt-1 leading-4">
+                      Tunjukkan / berikan kode 6 digit ini kepada lawan barter <AppText className="font-bold text-xs">{otherUser?.name || 'lawan barter'}</AppText> HANYA setelah Anda bertemu langsung dan menerima barang barter dalam kondisi sesuai.
                     </AppText>
 
                     {offer.payer_confirmed_at && (
@@ -1016,13 +1017,13 @@ export default function OfferDetailScreen() {
                 {isReceiver && (
                   <View className="mt-2 bg-emerald-50/80 dark:bg-emerald-950/40 p-4 rounded-2xl border border-emerald-200 dark:border-emerald-800">
                     <View className="flex-row items-center gap-2 mb-1.5">
-                      <AppText className="text-base">📦</AppText>
-                      <AppText className="text-xs font-bold text-emerald-900 dark:text-emerald-200">
+                      {/* <AppText className="text-base">📦</AppText> */}
+                      <AppText className="text-sm font-bold text-emerald-900 dark:text-emerald-200">
                         Verifikasi Kode dari Pembayar
                       </AppText>
                     </View>
-                    <AppText className="text-[11px] text-slate-600 dark:text-slate-300 mb-3 leading-4">
-                      Minta 6 digit kode rahasia dari <AppText className="font-bold text-slate-900 dark:text-white">{otherUser?.name || 'pembayar'}</AppText> setelah Anda menyerahkan barang. Masukkan kode di bawah untuk mencairkan dana:
+                    <AppText className="text-xs text-slate-600 dark:text-slate-300 mb-3 leading-4">
+                      Minta 6 digit kode rahasia dari <AppText className="font-bold text-xs text-slate-900 dark:text-white">{otherUser?.name || 'pembayar'}</AppText> setelah Anda menyerahkan barang. Masukkan kode di bawah untuk mencairkan dana:
                     </AppText>
 
                     {offer.receiver_confirmed_at ? (

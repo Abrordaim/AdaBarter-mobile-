@@ -56,7 +56,7 @@ export default function ChatTabScreen() {
         const timestamp = timeSource ? new Date(timeSource).getTime() : 0;
         const dateStr = timeSource ? new Date(timeSource).toLocaleDateString('id-ID') : '';
 
-        let itemContext = `💬 ${item?.title || 'Tanya Barang'}`;
+        let itemContext = `${item?.title || 'Tanya Barang'}`;
         let badgeText = 'Chat Langsung';
         let badgeVariant: 'success' | 'info' | 'neutral' | 'warning' = 'neutral';
 
@@ -135,7 +135,7 @@ export default function ChatTabScreen() {
 
   return (
     <MainTemplate title="Pesan & Obrolan" onRefresh={() => fetchAllConversations(true)} refreshing={refreshing}>
-      <View className="px-4 py-3">
+      <View className=" py-3">
         {loading ? (
           <View className="py-20 items-center justify-center">
             <ActivityIndicator size="large" color="#059669" />
@@ -161,13 +161,13 @@ export default function ChatTabScreen() {
             />
           </View>
         ) : (
-          <View className="gap-3">
+          <View className="">
             {unifiedList.map((chat) => (
               <TouchableOpacity
                 key={chat.key}
                 activeOpacity={0.7}
                 onPress={chat.onPress}
-                className="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex-row items-center gap-3.5"
+                className="bg-white dark:bg-slate-800 p-2 border border-slate-200 dark:border-slate-700 shadow-sm flex-row gap-3 items-center"
               >
                 <View className="relative">
                   <Avatar
@@ -196,7 +196,7 @@ export default function ChatTabScreen() {
 
                   {/* Context Pill (Barter match or Item Title) */}
                   <View className="bg-slate-100 dark:bg-slate-700/60 px-2 py-0.5 rounded-md self-start mb-1.5 flex-row items-center gap-1 max-w-[95%]">
-                    <AppText className="text-[9px] text-slate-700 dark:text-slate-300 font-medium" numberOfLines={1}>
+                    <AppText className="text-xs text-slate-700 dark:text-slate-300 font-medium" numberOfLines={1}>
                       {chat.itemContext}
                     </AppText>
                   </View>
@@ -213,7 +213,7 @@ export default function ChatTabScreen() {
 
                 <View className="items-end justify-between self-stretch py-0.5">
                   <Badge variant={chat.badgeVariant} text={chat.badgeText} />
-                  <AppText className="text-slate-300 mt-2 text-lg">›</AppText>
+                
                 </View>
               </TouchableOpacity>
             ))}
