@@ -316,6 +316,32 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        {/* Account Restriction / Health Warning Banner */}
+        {((profile?.penalty_points ?? user?.penalty_points ?? 0) > 0 || (profile?.account_status ?? user?.account_status) === 'restricted') && (
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => router.push('/user/account-health')}
+            className="bg-red-50 dark:bg-red-950/40 p-4 rounded-2xl mb-4 border border-red-200 dark:border-red-800 flex-row items-center justify-between"
+          >
+            <View className="flex-1 pr-2">
+              <View className="flex-row items-center gap-1.5 mb-1">
+                <Icon name="shield-half" size={18} color="#dc2626" />
+                <AppText className="text-red-700 dark:text-red-300 font-bold text-sm">
+                  {(profile?.account_status ?? user?.account_status) === 'restricted'
+                    ? 'Akun Dibatasi Sementara'
+                    : 'Peringatan Kesehatan Akun'}
+                </AppText>
+              </View>
+              <AppText className="text-red-600 dark:text-red-400 text-xs">
+                Anda memiliki {profile?.penalty_points ?? user?.penalty_points ?? 0} poin penalti. Ketuk untuk memeriksa pembatasan dan mengajukan banding.
+              </AppText>
+            </View>
+            <View className="bg-red-600 px-3 py-1.5 rounded-full shadow-sm">
+              <AppText className="text-xs font-bold text-white">Periksa</AppText>
+            </View>
+          </TouchableOpacity>
+        )}
+
         {/* VIP Upgrade Promo Banner */}
         {!isVip ? (
           <TouchableOpacity
@@ -440,7 +466,7 @@ export default function ProfileScreen() {
                   </AppText>
                 </View>
               </View>
-              <AppText className="text-xs font-bold text-emerald-700 dark:text-emerald-300">Gunakan ›</AppText>
+              {/* <AppText className="text-xs font-bold text-emerald-700 dark:text-emerald-300">Gunakan ›</AppText> */}
             </TouchableOpacity>
           )}
         </View>
@@ -722,6 +748,33 @@ export default function ProfileScreen() {
               </AppText>
             </View>
             <AppText className="text-slate-400">›</AppText>
+          </TouchableOpacity>
+
+          {/* ── Kesehatan Akun (Sistem Poin Penalti & Banding) ── */}
+          <TouchableOpacity
+            onPress={() => router.push('/user/account-health')}
+            className="flex-row items-center justify-between p-4 border-b border-slate-100 dark:border-slate-700"
+          >
+            <View className="flex-row items-center gap-3">
+              <AppText className="text-lg"><Icon name="shield-checkmark-outline" size={24} color="#059669" /></AppText>
+              <AppText variant="body" className="font-medium text-slate-800 dark:text-slate-200">
+                Kesehatan Akun &amp; Sanksi
+              </AppText>
+            </View>
+            <View className="flex-row items-center gap-1.5">
+              {(profile?.penalty_points ?? user?.penalty_points ?? 0) > 0 ? (
+                <View className="bg-red-100 dark:bg-red-900/50 px-2 py-0.5 rounded-full">
+                  <AppText className="text-[11px] font-bold text-red-700 dark:text-red-300">
+                    {profile?.penalty_points ?? user?.penalty_points} Poin
+                  </AppText>
+                </View>
+              ) : (
+                <AppText variant="caption" className="text-emerald-600 font-semibold">
+                  Baik
+                </AppText>
+              )}
+              <AppText className="text-slate-400">›</AppText>
+            </View>
           </TouchableOpacity>
 
           <TouchableOpacity

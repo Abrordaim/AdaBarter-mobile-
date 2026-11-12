@@ -135,7 +135,18 @@ export default function CreateOfferScreen() {
       );
     } catch (e: any) {
       const msg = e.errors?.offerer_item_ids?.[0] || e.errors?.target_item_id?.[0] || e.message || 'Gagal mengajukan barter.';
-      Alert.alert('Pengajuan Barter Gagal', msg);
+      if (msg.toLowerCase().includes('pembatasan') || msg.toLowerCase().includes('dibatasi') || e.code === 'FEATURE_RESTRICTED') {
+        Alert.alert(
+          'Fitur Tawaran Dibatasi',
+          msg,
+          [
+            { text: 'Tutup', style: 'cancel' },
+            { text: 'Kesehatan Akun', onPress: () => router.push('/user/account-health') },
+          ]
+        );
+      } else {
+        Alert.alert('Pengajuan Barter Gagal', msg);
+      }
     } finally {
       setSubmitting(false);
     }

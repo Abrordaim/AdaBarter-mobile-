@@ -4,11 +4,12 @@ import { AppText } from './AppText';
 
 export interface BadgeProps {
   variant?: 'success' | 'warning' | 'error' | 'info' | 'neutral';
-  text: string;
+  text?: string;
+  children?: React.ReactNode;
   className?: string;
 }
 
-export const Badge: React.FC<BadgeProps> = ({ variant = 'neutral', text, className = '' }) => {
+export const Badge: React.FC<BadgeProps> = ({ variant = 'neutral', text, children, className = '' }) => {
   const getStyles = () => {
     switch (variant) {
       case 'success': return { bg: 'bg-green-100', text: 'text-green-800' };
@@ -23,7 +24,7 @@ export const Badge: React.FC<BadgeProps> = ({ variant = 'neutral', text, classNa
 
   return (
     <View className={`px-2 py-0.5 rounded-full self-start ${styles.bg} ${className}`}>
-      <AppText className={`text-xs font-medium ${styles.text}`}>{text}</AppText>
+      <AppText className={`text-xs font-medium ${styles.text}`}>{text || children}</AppText>
     </View>
   );
 };

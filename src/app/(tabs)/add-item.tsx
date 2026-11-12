@@ -186,7 +186,18 @@ export default function AddItemScreen() {
       );
     } catch (e: any) {
       const msg = e.errors?.quota?.[0] || e.message || 'Gagal mengunggah barang.';
-      Alert.alert('Gagal Mengunggah', msg);
+      if (e.errors?.restriction || msg.toLowerCase().includes('pembatasan') || msg.toLowerCase().includes('dibatasi') || e.code === 'FEATURE_RESTRICTED') {
+        Alert.alert(
+          'Fitur Unggah Dibatasi',
+          msg,
+          [
+            { text: 'Tutup', style: 'cancel' },
+            { text: 'Kesehatan Akun', onPress: () => router.push('/user/account-health') },
+          ]
+        );
+      } else {
+        Alert.alert('Gagal Mengunggah', msg);
+      }
     } finally {
       setLoading(false);
     }

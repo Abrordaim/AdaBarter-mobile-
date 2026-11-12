@@ -127,7 +127,19 @@ export default function ItemDetailScreen() {
         params: { conversationId: conv.id.toString() },
       });
     } catch (e: any) {
-      Alert.alert('Gagal Membuka Chat', e.message || 'Terjadi kesalahan.');
+      const msg = e.message || 'Terjadi kesalahan.';
+      if (msg.toLowerCase().includes('pembatasan') || msg.toLowerCase().includes('dibatasi') || e.code === 'FEATURE_RESTRICTED') {
+        Alert.alert(
+          'Fitur Chat Dibatasi',
+          msg,
+          [
+            { text: 'Tutup', style: 'cancel' },
+            { text: 'Kesehatan Akun', onPress: () => router.push('/user/account-health') },
+          ]
+        );
+      } else {
+        Alert.alert('Gagal Membuka Chat', msg);
+      }
     } finally {
       setStartingChat(false);
     }

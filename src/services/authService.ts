@@ -27,6 +27,11 @@ export interface User {
   received_offers_count?: number;
   average_rating?: number | null;
   ratings_count?: number;
+  penalty_points?: number;
+  account_status?: 'active' | 'restricted' | 'banned';
+  restriction_tier?: number;
+  restricted_until?: string | null;
+  active_restrictions?: string[];
   created_at?: string;
 }
 

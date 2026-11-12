@@ -26,6 +26,7 @@ export default function RootLayout() {
           <Stack.Screen name="offer/create" options={{ headerShown: false }} />
           <Stack.Screen name="chat/[offerId]" options={{ headerShown: false }} />
           <Stack.Screen name="chat/direct/[conversationId]" options={{ headerShown: false }} />
+          <Stack.Screen name="user/account-health" options={{ headerShown: false }} />
           <Stack.Screen name="monetization/vip" options={{ headerShown: false }} />
           <Stack.Screen name="monetization/boost" options={{ headerShown: false }} />
           <Stack.Screen name="monetization/transactions" options={{ headerShown: false }} />
